@@ -24,6 +24,7 @@ SET default_table_access_method = heap;
 CREATE TABLE public.users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     created_at timestamp without time zone default CURRENT_TIMESTAMP,
     updated_at timestamp without time zone default CURRENT_TIMESTAMP

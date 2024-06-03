@@ -15,4 +15,8 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - ./sql/bookmarks.sql:/docker-entrypoint-initdb.d/bookmarks.sql
+      - ./sql/bookmarks.sql:/docker-entrypoint-initdb.d/bookmarks.sql # initial data
+      - postgres_data:/var/lib/postgresql/data # Mount named volume for persistence
+
+volumes:
+  postgres_data: # Declare named volume for persistence

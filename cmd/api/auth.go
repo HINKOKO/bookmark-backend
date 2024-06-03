@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bookmarks/internal/models"
 	"errors"
 	"fmt"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Auth struct {
@@ -161,4 +163,21 @@ func (j *Auth) GetTokenFromHeaderAndVerify(w http.ResponseWriter, r *http.Reques
 	}
 
 	return token, claims, nil
+}
+
+type Credentials struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type UserAuthenticating struct {
+	Username    string
+	Email       string
+	Password    string
+	Verified    bool
+	VerifyToken string
+}
+
+func (app *application) CheckPassword(u models.User, plainPass string) error {
+	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plainPass))
 }

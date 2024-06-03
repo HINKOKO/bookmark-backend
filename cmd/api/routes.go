@@ -23,6 +23,8 @@ func (app *application) routes() http.Handler {
 	mux.Use(middleware.Recoverer)
 
 	mux.Get("/bookmarks/{category}", app.GetProjectsByCategory)
+	// mux.Post("/login", app.Login)
+	mux.Post("/register", app.Register)
 
 	return mux
 }
