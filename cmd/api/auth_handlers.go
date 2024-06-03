@@ -36,12 +36,29 @@ func (app *application) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("%+v\n", req)
+	log.Printf("register request populated with ==> %+v\n", req)
 
 	id, err := app.DB.InsertNewUser(req.Username, req.Email, req.Password)
+
 	if err != nil {
 		log.Println("failed to record new user")
 		return
 	}
-	app.writeJSON(w, http.StatusAccepted, id)
+	log.Println("last user inserted got an id of:", id)
+	log.Println("user inserted has a username => ", req.Username)
+
+	// generate a token for new user
+	u := jwtUser{
+		ID:       id,
+		Username: req.Username,
+	}
+	tokenString, _ := app.auth.GenerateTokenPair(&u)
+	refreshCookie := app.auth.GetRefreshCookie(tokenString.RefreshToken)
+
+	// log.Println("token String from new user is ==> \t", tokenString)
+	log.Println("refresh cookie is valid ?  ==> \t", refreshCookie)
+
+	http.SetCookie(w, refreshCookie)
+
+	app.writeJSON(w, http.StatusAccepted, tokenString)
 }

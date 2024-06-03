@@ -109,14 +109,15 @@ func (m *PostgresDBRepo) InsertNewUser(username, email, password string) (int, e
 
 	passHash, _ := bcrypt.GenerateFromPassword([]byte(password), 12)
 
-	stmt := `INSERT INTO users (username, email, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)`
+	var userID int
 
-	rows, err := m.DB.ExecContext(ctx, stmt, username, email, string(passHash), time.Now(), time.Now())
+	stmt := `INSERT INTO users (username, email, password_hash, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`
+
+	err := m.DB.QueryRowContext(ctx, stmt, username, email, string(passHash), time.Now(), time.Now()).Scan(&userID)
 
 	if err != nil {
 		return 0, err
 	}
-	lastUserId, _ := rows.LastInsertId()
-	return int(lastUserId), nil
+	return userID, nil
 }

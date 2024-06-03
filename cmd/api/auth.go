@@ -4,6 +4,7 @@ import (
 	"bookmarks/internal/models"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -61,6 +62,7 @@ func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
 	if err != nil {
 		return TokenPairs{}, err
 	}
+	log.Println(signedAccessToken)
 
 	// Create a refresh token - set claims
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
@@ -82,6 +84,7 @@ func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
 		Token:        signedAccessToken,
 		RefreshToken: signedRefreshToken,
 	}
+	log.Printf("%+v\n", tokenPairs)
 
 	// Finally Return TokenPairs
 	return tokenPairs, nil
@@ -98,7 +101,7 @@ func (j *Auth) GetRefreshCookie(refreshToken string) *http.Cookie {
 		SameSite: http.SameSiteStrictMode,
 		Domain:   j.CookieDomain,
 		HttpOnly: true, // -> Giving No javascript access at all to this cookie
-		Secure:   true,
+		Secure:   false,
 	}
 }
 
@@ -111,11 +114,11 @@ func (j *Auth) GetExpiredRefreshCookie() *http.Cookie {
 		Path:     j.CookiePath,
 		Value:    "",
 		Expires:  time.Unix(0, 0),
-		MaxAge:   -1,
+		MaxAge:   86400,
 		SameSite: http.SameSiteStrictMode,
 		Domain:   j.CookieDomain,
 		HttpOnly: true, // No javascript access at all to this cookie
-		Secure:   true,
+		Secure:   false,
 	}
 }
 
