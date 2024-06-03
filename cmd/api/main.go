@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/joho/godotenv"
 )
 
 const port = 8080
@@ -20,6 +22,12 @@ type application struct {
 	JWTIssuer    string
 	JWTAudience  string
 	CookieDomain string
+}
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("error: no .env file found. Shutting down")
+	}
 }
 
 func main() {

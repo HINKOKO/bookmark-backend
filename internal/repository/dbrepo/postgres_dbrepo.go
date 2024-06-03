@@ -5,6 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type PostgresDBRepo struct {
@@ -76,4 +78,45 @@ func (m *PostgresDBRepo) GetProjectResources(projectID int) ([]*models.Bookmark,
 		bookmarks = append(bookmarks, &b)
 	}
 	return bookmarks, nil
+}
+
+func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	var u models.User
+
+	query := `SELECT id, username, password_hash, created_at, updated_at FROM users WHERE email = $1`
+
+	row := m.DB.QueryRowContext(ctx, query, email)
+	err := row.Scan(
+		&u.ID,
+		&u.UserName,
+		&u.Password,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
+	if err != nil {
+		return u, err
+	}
+
+	return u, nil
+}
+
+func (m *PostgresDBRepo) InsertNewUser(username, email, password string) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	passHash, _ := bcrypt.GenerateFromPassword([]byte(password), 12)
+
+	stmt := `INSERT INTO users (username, email, password_hash, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)`
+
+	rows, err := m.DB.ExecContext(ctx, stmt, username, email, string(passHash), time.Now(), time.Now())
+
+	if err != nil {
+		return 0, err
+	}
+	lastUserId, _ := rows.LastInsertId()
+	return int(lastUserId), nil
 }
