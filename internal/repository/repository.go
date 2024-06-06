@@ -3,6 +3,8 @@ package repository
 import (
 	"bookmarks/internal/models"
 	"database/sql"
+
+	"github.com/markbates/goth"
 )
 
 type DatabaseRepo interface {
@@ -12,4 +14,5 @@ type DatabaseRepo interface {
 
 	GetUserByEmail(email string) (models.User, error)
 	InsertNewUser(username, email, password string) (int, error)
+	StoreUserInDB(userID string, user *goth.User) error
 }

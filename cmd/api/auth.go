@@ -26,14 +26,14 @@ type Auth struct {
 
 // Data about an user to issue a token
 type jwtUser struct {
-	ID       int    `json:"id"`
+	ID       string `json:"id"`
 	Username string `json:"username"`
 }
 
 // TokenPairs - gather token and refresh token
 type TokenPairs struct {
 	Token        string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refreshy_token_of_devil"`
 }
 
 // Claims - wrapper type around the jwt registered claims
@@ -43,9 +43,10 @@ type Claims struct {
 
 // GenerateTokenPair - generate the token pair
 func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
+	// Create a token
 	token := jwt.New(jwt.SigningMethodHS256)
 
-	// Set the claims - what is this token claims to be ?
+	// Set the claims - what is this token claims to be representing, when, ... ?
 	claims := token.Claims.(jwt.MapClaims)
 	claims["name"] = fmt.Sprintf("%s", user.Username)
 	claims["sub"] = fmt.Sprint(user.ID)
@@ -62,9 +63,8 @@ func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
 	if err != nil {
 		return TokenPairs{}, err
 	}
-	log.Println(signedAccessToken)
 
-	// Create a refresh token - set claims
+	// Create a refresh token - set claims - kinda parallel/similar methods here
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
 	refreshTokenClaims := refreshToken.Claims.(jwt.MapClaims)
 	refreshTokenClaims["sub"] = fmt.Sprint(user.ID)
@@ -79,12 +79,14 @@ func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
 		return TokenPairs{}, err
 	}
 
+	log.Println("successfull signed token ? => \t", signedAccessToken)
+	log.Println("successfull refresh signed token ? => \t", signedRefreshToken)
+
 	// Create TokenPairs and populate with signed tokens
 	var tokenPairs = TokenPairs{
 		Token:        signedAccessToken,
 		RefreshToken: signedRefreshToken,
 	}
-	log.Printf("%+v\n", tokenPairs)
 
 	// Finally Return TokenPairs
 	return tokenPairs, nil

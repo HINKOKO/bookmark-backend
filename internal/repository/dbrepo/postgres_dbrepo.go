@@ -4,9 +4,11 @@ import (
 	"bookmarks/internal/models"
 	"context"
 	"database/sql"
+	"log"
+	"strconv"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/markbates/goth"
 )
 
 type PostgresDBRepo struct {
@@ -103,21 +105,36 @@ func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 	return u, nil
 }
 
-func (m *PostgresDBRepo) InsertNewUser(username, email, password string) (int, error) {
+func (m *PostgresDBRepo) InsertNewUser(username, email, hashedPassword string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-
-	passHash, _ := bcrypt.GenerateFromPassword([]byte(password), 12)
 
 	var userID int
 
 	stmt := `INSERT INTO users (username, email, password_hash, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5) RETURNING id`
 
-	err := m.DB.QueryRowContext(ctx, stmt, username, email, string(passHash), time.Now(), time.Now()).Scan(&userID)
+	err := m.DB.QueryRowContext(ctx, stmt, username, email, hashedPassword, time.Now(), time.Now()).Scan(&userID)
 
 	if err != nil {
 		return 0, err
 	}
 	return userID, nil
+}
+
+func (m *PostgresDBRepo) StoreUserInDB(userID string, user *goth.User) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	realID, _ := strconv.Atoi(userID)
+	fakeMail := "any"
+	fakePass := "pass"
+
+	stmt := `INSERT INTO users (id, email, password_hash, username, avatar_url) VALUES ($1, $2, $3, $4, $5)`
+	_, err := m.DB.ExecContext(ctx, stmt, realID, fakeMail, fakePass, user.NickName, user.AvatarURL)
+	if err != nil {
+		log.Println("failed to insert user", err)
+		return err
+	}
+	return nil
 }
