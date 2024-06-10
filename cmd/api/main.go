@@ -22,6 +22,8 @@ type MailConfig struct {
 	host     string
 	port     int
 	username string
+	password string
+	from     string
 }
 
 type OauthConfig struct {
@@ -54,6 +56,7 @@ func main() {
 
 	smtp_username := os.Getenv("SMTP_USERNAME")
 	smtp_password := os.Getenv("SMTP_PASSWORD")
+	smtp_from := os.Getenv("SMTP_FROM")
 
 	// Cmd line reading
 	flag.StringVar(&app.DSN, "dsn", "host=localhost port=5432 user=postgres password=12345 dbname=bookmarkers sslmode=disable timezone=UTC connect_timeout=5", "Postgres connection string")
@@ -63,9 +66,10 @@ func main() {
 	// flag.StringVar(&app.CookieDomain, "domain", "localhost", "Cookie domain")
 	// Adding smtp mail configuration
 	flag.StringVar(&app.mailConfig.host, "smtp host", "sandbox.smtp.mailtrap.io", "smtp host")
-	flag.IntVar(&app.mailConfig.port, "smtp port", 587, "smtp port")
+	flag.IntVar(&app.mailConfig.port, "smtp port", 2525, "smtp port")
 	flag.StringVar(&app.mailConfig.username, "smtp username", smtp_username, "smtp user")
-	flag.StringVar(&app.mailConfig.username, "smtp password", smtp_password, "smtp password")
+	flag.StringVar(&app.mailConfig.password, "smtp password", smtp_password, "smtp password")
+	flag.StringVar(&app.mailConfig.from, "smtp from", smtp_from, "smtp from")
 	flag.Parse()
 
 	// Connect to DB
@@ -82,7 +86,7 @@ func main() {
 		Issuer:        app.JWTIssuer,
 		Audience:      app.JWTAudience,
 		Secret:        app.JWTSecret,
-		TokenExpiry:   time.Second * 45,
+		TokenExpiry:   time.Hour * 24,
 		RefreshExpiry: time.Hour * 24,
 		CookiePath:    "/",
 		CookieName:    "refresh_token",

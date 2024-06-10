@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"io"
+	"math/big"
 	"net/http"
 )
 
@@ -12,6 +14,9 @@ type JSONResponse struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
+
+// Character set from which to generate the random string (email validation)
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data any, headers ...http.Header) error {
 	out, err := json.Marshal(data)
@@ -65,4 +70,19 @@ func (app *application) errorJSON(w http.ResponseWriter, err error, status ...in
 	payload.Message = err.Error()
 
 	return app.writeJSON(w, statusCode, payload)
+}
+
+// generateRandomString - generate a random string for new user wishing to register
+func generateRandomString(length int) string {
+	randomString := make([]byte, length)
+	charsetLen := big.NewInt(int64(len(charset)))
+
+	for i := range randomString {
+		randowIdx, err := rand.Int(rand.Reader, charsetLen)
+		if err != nil {
+			return ""
+		}
+		randomString[i] = charset[randowIdx.Int64()]
+	}
+	return string(randomString)
 }

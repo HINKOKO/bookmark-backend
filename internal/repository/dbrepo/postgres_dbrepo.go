@@ -5,10 +5,10 @@ import (
 	"context"
 	"database/sql"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/markbates/goth"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type PostgresDBRepo struct {
@@ -105,16 +105,21 @@ func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 	return u, nil
 }
 
-func (m *PostgresDBRepo) InsertNewUser(username, email, hashedPassword string) (int, error) {
+// InsertNewUser - Register a new 'classic' user - combination email + password
+func (m *PostgresDBRepo) InsertNewUser(username, email, password, emailToken string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	var userID int
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return 0, err
+	}
 
-	stmt := `INSERT INTO users (username, email, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	stmt := `INSERT INTO users (username, email, password_hash, email_token, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 
-	err := m.DB.QueryRowContext(ctx, stmt, username, email, hashedPassword, time.Now(), time.Now()).Scan(&userID)
+	err = m.DB.QueryRowContext(ctx, stmt, username, email, hashedPassword, emailToken, time.Now(), time.Now()).Scan(&userID)
 
 	if err != nil {
 		return 0, err
@@ -122,19 +127,82 @@ func (m *PostgresDBRepo) InsertNewUser(username, email, hashedPassword string) (
 	return userID, nil
 }
 
+// StoreUserInDB - stores a new user who log/register with OAUTH (Github provider)
 func (m *PostgresDBRepo) StoreUserInDB(userID string, user *goth.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	realID, _ := strconv.Atoi(userID)
 	fakeMail := "any"
 	fakePass := "pass"
 
-	stmt := `INSERT INTO users (id, email, password_hash, username, avatar_url) VALUES ($1, $2, $3, $4, $5)`
-	_, err := m.DB.ExecContext(ctx, stmt, realID, fakeMail, fakePass, user.NickName, user.AvatarURL)
+	stmt := `INSERT INTO users (email, password_hash, username, avatar_url, jwt_token_id) VALUES ($1, $2, $3, $4, $5)`
+	_, err := m.DB.ExecContext(ctx, stmt, fakeMail, fakePass, user.NickName, user.AvatarURL, userID)
 	if err != nil {
-		log.Println("failed to insert user", err)
+		log.Println("StoreUserInDB:: failed to insert user", err)
 		return err
 	}
 	return nil
 }
+
+// FetchUserFromDB - fetch a user by ID to give information to dashboard protected route
+func (m *PostgresDBRepo) FetchUserFromDB(userID string) (models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	var u models.User
+	log.Println("FetchUserFromDB:: userID just before querying db => ", userID)
+
+	query := `SELECT username, email, avatar_url FROM users WHERE jwt_token_id = $1`
+
+	row := m.DB.QueryRowContext(ctx, query, userID)
+	err := row.Scan(
+		&u.UserName,
+		&u.Email,
+		&u.AvatarURL,
+	)
+	if err != nil {
+		return u, err
+	}
+	return u, nil
+}
+
+// GetUserByConfirmationToken - Get a user with by email_token confirmation (when registering for the first time)
+func (m *PostgresDBRepo) GetUserByConfirmationToken(token string) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	var user models.User
+	query := `SELECT id, username, email, verified FROM users WHERE email_token = $1`
+
+	row := m.DB.QueryRowContext(ctx, query, token)
+	err := row.Scan(
+		&user.ID,
+		&user.UserName,
+		&user.Email,
+		&user.Verified,
+	)
+	if err != nil {
+		return &user, err
+	}
+	return &user, nil
+}
+
+func (m *PostgresDBRepo) VerifyUser(userID int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	stmt := `UPDATE users SET verified = TRUE, email_token = NULL WHERE id = $1`
+	_, err := m.DB.ExecContext(ctx, stmt, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// func (db *DB) VerifyUser(userID int) error {
+// 	query := `UPDATE users SET verified = TRUE, confirmation_token = NULL WHERE id = $1`
+// 	_, err := db.Exec(query, userID)
+// 	if err != nil {
+// 		return fmt.Errorf("could not verify user: %w", err)
+// 	}
+// 	return nil
+// }

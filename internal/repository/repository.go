@@ -13,6 +13,12 @@ type DatabaseRepo interface {
 	GetProjectResources(projectID int) ([]*models.Bookmark, error)
 
 	GetUserByEmail(email string) (models.User, error)
-	InsertNewUser(username, email, password string) (int, error)
 	StoreUserInDB(userID string, user *goth.User) error
+
+	FetchUserFromDB(userID string) (models.User, error)
+	// email confirmation && classic authentication function
+	// mail confirmation related function
+	GetUserByConfirmationToken(token string) (*models.User, error)
+	VerifyUser(userID int) error
+	InsertNewUser(username, email, password, emailToken string) (int, error)
 }

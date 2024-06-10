@@ -36,19 +36,33 @@ func (app *application) GetProjectsByCategory(w http.ResponseWriter, r *http.Req
 }
 
 func (app *application) GetUserInfo(w http.ResponseWriter, r *http.Request) {
-	accessToken := r.Header.Get("Authorization")
-	if accessToken == "" {
-		http.Error(w, "Access token is required", http.StatusBadRequest)
+	// Handle CORS preflight requests
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	// Here you would implement the logic to fetch user information based on the access token
-	// For example, querying a database or making an API call to an authentication server
+	token, claims, err := app.auth.GetTokenFromHeaderAndVerify(w, r)
+	if err != nil || token == "" {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 
-	// For demonstration purposes, let's return a mock user info
-	userInfo := map[string]string{"username": "patrick_cohen"}
+	userID := claims.Subject
 
-	// Serialize user info to JSON and write it to the response
+	userInfo, err := app.DB.FetchUserFromDB(userID)
+	if err != nil {
+		http.Error(w, "Error fetching user info", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(userInfo)
+}
+
+func (app *application) GetContributors(w http.ResponseWriter, r *http.Request) {
+
 }

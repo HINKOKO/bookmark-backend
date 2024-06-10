@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,8 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/gorilla/sessions"
 	"github.com/markbates/goth/gothic"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type RegisterRequest struct {
@@ -20,14 +21,120 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
-var indexTemplate = `
-<p><a href="/auth/google">Log in with google</a></p>`
+// var store = sessions.NewCookieStore([]byte("verysecret"))
 
-var userTemplate = `
-<h2>Welcome</h2>
-<p>Name: {{.Name}}</p>`
+func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
+	var loginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
 
-var store = sessions.NewCookieStore([]byte("verysecret"))
+	err := json.NewDecoder(r.Body).Decode(&loginReq)
+	if err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if loginReq.Email == "" || loginReq.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	user, err := app.DB.GetUserByEmail(loginReq.Email)
+	if err != nil {
+		http.Error(w, "no such user in our dataabse", http.StatusNotFound)
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(loginReq.Password), []byte(user.Password))
+	if err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// generate a token for new user
+	classicUser := jwtUser{
+		ID:       fmt.Sprintf(string(user.ID)),
+		Username: user.UserName,
+	}
+	tokenString, _ := app.auth.GenerateTokenPair(&classicUser)
+
+	// Optionally, store the refresh token in the database
+	// err = app.DB.StoreRefreshToken(user.ID, tokenString.RefreshToken)
+	// if err != nil {
+	// 	http.Error(w, "Failed to store refresh token", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	http.SetCookie(w, app.auth.GetRefreshCookie(tokenString.RefreshToken))
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"access_token": tokenString.Token})
+
+}
+
+func (app *application) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+
+	if token == "" {
+		http.Error(w, "token must be expired - please start over to register", http.StatusBadRequest)
+		return
+	}
+
+	// Using confirmation token - we retrieve corresponding user (pre-registered)
+	user, err := app.DB.GetUserByConfirmationToken(token)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid or expired token", http.StatusNotFound)
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Evrything valid, we UPDATE the user as verified - Register is complete !
+	err = app.DB.VerifyUser(user.ID)
+	if err != nil {
+		// If an error occurred while updating the user's verification status, return a server error
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "http://localhost:5173/email-confirmed", http.StatusAccepted)
+}
+
+func (app *application) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
+	var req RegisterRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// check in log the request
+	// log.Printf("%+v\n", req)
+
+	// Request is properly formatted - pretending new user deserves an email confirmation
+	// generate a random token
+	randomString := generateRandomString(32)
+	log.Println(randomString)
+
+	err = app.sendConfirmationEmail(req.Email, randomString)
+	if err != nil {
+		http.Error(w, "Failed to send confirmation email", http.StatusInternalServerError)
+		return
+	}
+
+	id, err := app.DB.InsertNewUser(req.Username, req.Email, req.Password, randomString)
+	if err != nil {
+		log.Println("Failed to register that new user")
+		return
+	}
+	// Optionally, you can redirect the user to a success page
+	http.Redirect(w, r, "http://localhost:5173/email-confirmation?redirect=login", http.StatusAccepted)
+	app.writeJSON(w, http.StatusAccepted, id)
+}
 
 func (app *application) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -39,7 +146,6 @@ func (app *application) HandleAuth(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
-	log.Println(provider)
 	r = r.WithContext(context.WithValue(context.Background(), "provider", provider))
 	user, err := gothic.CompleteUserAuth(w, r)
 	if err != nil {
@@ -58,7 +164,7 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	refreshCookie := app.auth.GetRefreshCookie(tokenString.RefreshToken)
 	http.SetCookie(w, refreshCookie)
 
-	// Store minimal info about this new user with Oauth - for feeding Dashboard && Contributors page
+	// store that new user in DB
 	err = app.DB.StoreUserInDB(userID, &user)
 	if err != nil {
 		log.Printf("Error storing user in database: %v", err)
@@ -98,8 +204,8 @@ func (app *application) Dashboard(w http.ResponseWriter, r *http.Request) {
 // 		app.writeJSON(w, http.StatusBadRequest, nil)
 // 	}
 
-//		app.writeJSON(w, http.StatusOK, u)
-//	}
+// 		app.writeJSON(w, http.StatusOK, u)
+// 	}
 // func (app *application) InitOauth(w http.ResponseWriter, r *http.Request) {
 // 	provider := chi.URLParam(r, "provider")
 // 	log.Println("provider from URLParam is => ", provider)
