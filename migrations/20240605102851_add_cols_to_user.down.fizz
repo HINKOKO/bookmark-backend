@@ -1,0 +1,2 @@
+drop_column("users", "avatar_url")
+drop_column("users", "nickname")

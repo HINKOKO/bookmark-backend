@@ -1,0 +1,1 @@
+ALTER TABLE users ALTER COLUMN email_token SET NOT NULL;

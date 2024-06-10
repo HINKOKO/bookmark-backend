@@ -1,0 +1,1 @@
+add_column("users", "jwt_token_id", "string", {"default": ""})
