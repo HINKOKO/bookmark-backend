@@ -120,13 +120,15 @@ func (app *application) RegisterNewUser(w http.ResponseWriter, r *http.Request) 
 	randomString := generateRandomString(32)
 	log.Println(randomString)
 
+	defaultAvatar := fmt.Sprintf("https://api.dicebear.com/8.x/pixel-art/svg?seed=%s", req.Username)
+
 	err = app.sendConfirmationEmail(req.Email, randomString)
 	if err != nil {
 		http.Error(w, "Failed to send confirmation email", http.StatusInternalServerError)
 		return
 	}
 
-	id, err := app.DB.InsertNewUser(req.Username, req.Email, req.Password, randomString)
+	id, err := app.DB.InsertNewUser(req.Username, req.Email, req.Password, randomString, defaultAvatar)
 	if err != nil {
 		log.Println("Failed to register that new user")
 		return

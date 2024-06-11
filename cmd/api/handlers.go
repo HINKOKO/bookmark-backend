@@ -64,5 +64,13 @@ func (app *application) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) GetContributors(w http.ResponseWriter, r *http.Request) {
+	var contributors []*models.User
 
+	contributors, err := app.DB.GetContributors()
+	if err != nil {
+		app.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	app.writeJSON(w, http.StatusOK, contributors)
 }

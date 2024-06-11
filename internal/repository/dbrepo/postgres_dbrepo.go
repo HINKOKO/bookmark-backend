@@ -82,6 +82,35 @@ func (m *PostgresDBRepo) GetProjectResources(projectID int) ([]*models.Bookmark,
 	return bookmarks, nil
 }
 
+func (m *PostgresDBRepo) GetContributors() ([]*models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	var conts []*models.User
+	query := `SELECT id, username, email, coalesce(nickname, ''), coalesce(avatar_url, '') FROM users`
+	rows, err := m.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cont models.User
+		err = rows.Scan(
+			&cont.ID,
+			&cont.UserName,
+			&cont.Email,
+			&cont.NickName,
+			&cont.AvatarURL,
+		)
+		if err != nil {
+			return nil, err
+		}
+		conts = append(conts, &cont)
+	}
+	return conts, nil
+}
+
 func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
@@ -106,7 +135,7 @@ func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 }
 
 // InsertNewUser - Register a new 'classic' user - combination email + password
-func (m *PostgresDBRepo) InsertNewUser(username, email, password, emailToken string) (int, error) {
+func (m *PostgresDBRepo) InsertNewUser(username, email, password, emailToken, defaultAvatar string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
@@ -116,10 +145,10 @@ func (m *PostgresDBRepo) InsertNewUser(username, email, password, emailToken str
 		return 0, err
 	}
 
-	stmt := `INSERT INTO users (username, email, password_hash, email_token, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	stmt := `INSERT INTO users (username, email, password_hash, email_token, avatar_url, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
 
-	err = m.DB.QueryRowContext(ctx, stmt, username, email, hashedPassword, emailToken, time.Now(), time.Now()).Scan(&userID)
+	err = m.DB.QueryRowContext(ctx, stmt, username, email, hashedPassword, emailToken, defaultAvatar, time.Now(), time.Now()).Scan(&userID)
 
 	if err != nil {
 		return 0, err
