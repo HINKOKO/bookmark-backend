@@ -48,39 +48,68 @@ func (m *PostgresDBRepo) GetProjectsByCategory(category string) ([]*models.Proje
 	return projects, nil
 }
 
-func (m *PostgresDBRepo) GetProjectResources(projectID int) ([]*models.Bookmark, error) {
+func (m *PostgresDBRepo) GetResourcesByCategoryAndProject(category, project string) ([]*models.Bookmark, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	var bookmarks []*models.Bookmark
+	var resources []*models.Bookmark
 
-	query := `SELECT id, url, title, description, user_id, project_id, created_at,
-		updated_at FROM bookmarks WHERE project_id = $1`
+	query := `SELECT b.id, b.title, b.description, b.url FROM bookmarks b
+		JOIN projects p ON b.project_id = p.id
+		JOIN categories c ON p.category_id = c.id
+		WHERE c.category = $1 AND p.name = $2`
 
-	rows, err := m.DB.QueryContext(ctx, query, projectID)
+	rows, err := m.DB.QueryContext(ctx, query, category, project)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
-		var b models.Bookmark
-		err := rows.Scan(
-			b.ID,
-			b.Url,
-			b.Title,
-			b.Description,
-			b.UserID,
-			b.ProjectID,
-			b.CreatedAt,
-			b.UpdatedAt,
-		)
+		var r models.Bookmark
+		err := rows.Scan(&r.ID, &r.Title, &r.Description, &r.Url)
 		if err != nil {
 			return nil, err
 		}
-		bookmarks = append(bookmarks, &b)
+		resources = append(resources, &r)
 	}
-	return bookmarks, nil
+	return resources, nil
 }
+
+// ============== Unused ==========
+// func (m *PostgresDBRepo) GetProjectResources(projectID int) ([]*models.Bookmark, error) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+// 	defer cancel()
+
+// 	var bookmarks []*models.Bookmark
+
+// 	query := `SELECT id, url, title, description, user_id, project_id, created_at,
+// 		updated_at FROM bookmarks WHERE project_id = $1`
+
+// 	rows, err := m.DB.QueryContext(ctx, query, projectID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	for rows.Next() {
+// 		var b models.Bookmark
+// 		err := rows.Scan(
+// 			b.ID,
+// 			b.Url,
+// 			b.Title,
+// 			b.Description,
+// 			b.UserID,
+// 			b.ProjectID,
+// 			b.CreatedAt,
+// 			b.UpdatedAt,
+// 		)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		bookmarks = append(bookmarks, &b)
+// 	}
+// 	return bookmarks, nil
+// }
 
 func (m *PostgresDBRepo) GetContributors() ([]*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)

@@ -35,6 +35,20 @@ func (app *application) GetProjectsByCategory(w http.ResponseWriter, r *http.Req
 	_ = app.writeJSON(w, http.StatusOK, projects)
 }
 
+func (app *application) GetResourcesForProject(w http.ResponseWriter, r *http.Request) {
+	category := chi.URLParam(r, "category")
+	project := chi.URLParam(r, "project")
+
+	resources, err := app.DB.GetResourcesByCategoryAndProject(category, project)
+	if err != nil {
+		app.errorJSON(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(resources)
+
+}
+
 func (app *application) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 	// Handle CORS preflight requests
 	if r.Method == http.MethodOptions {

@@ -17,6 +17,7 @@ func (app *application) routes() http.Handler {
 	mux.Get("/", app.Home)
 	// Bookmarks && resources
 	mux.Get("/bookmarks/{category}", app.GetProjectsByCategory)
+	mux.Get("/bookmarks/{category}/{project}", app.GetResourcesForProject)
 	mux.Get("/dashboard", app.Dashboard)
 	mux.Get("/auth/{provider}", app.HandleAuth)
 	mux.Get("/auth/{provider}/callback", app.HandleCallback)

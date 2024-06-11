@@ -10,7 +10,8 @@ import (
 type DatabaseRepo interface {
 	Connection() *sql.DB
 	GetProjectsByCategory(category string) ([]*models.Project, error)
-	GetProjectResources(projectID int) ([]*models.Bookmark, error)
+	// GetProjectResources(projectID int) ([]*models.Bookmark, error)
+	GetResourcesByCategoryAndProject(category, project string) ([]*models.Bookmark, error)
 
 	GetUserByEmail(email string) (models.User, error)
 	StoreUserInDB(userID string, user *goth.User) error
