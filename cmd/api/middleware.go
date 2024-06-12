@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 )
 
@@ -28,6 +29,33 @@ func (app *application) authRequired(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+func (app *application) verifyToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var claims *Claims
+		var err error
+
+		// Try to get the token from the cookie
+		cookie, err := r.Cookie("refresh_token")
+		if err == nil {
+			_, claims, err = app.auth.GetTokenFromCookieAndVerify(cookie.Value)
+		}
+
+		// If there's no valid cookie token, try the Authorization header
+		if err != nil {
+			_, claims, err = app.auth.GetTokenFromHeaderAndVerify(w, r)
+		}
+
+		// If neither method succeeded, respond with Unauthorized
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Store claims in the context
+		ctx := context.WithValue(r.Context(), "claims", claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"bookmarks/internal/models"
 	"database/sql"
+	"time"
 
 	"github.com/markbates/goth"
 )
@@ -15,6 +16,9 @@ type DatabaseRepo interface {
 
 	GetUserByEmail(email string) (models.User, error)
 	StoreUserInDB(userID string, user *goth.User) error
+
+	// Tokens related functions
+	StoreTokenPairs(userID int, accessToken, refreshToken string, expiry time.Time) error
 
 	FetchUserFromDB(userID string) (models.User, error)
 	// email confirmation && classic authentication function

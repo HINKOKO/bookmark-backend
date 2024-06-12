@@ -13,7 +13,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/github"
-	"github.com/markbates/goth/providers/google"
 )
 
 const port = 8080
@@ -26,18 +25,11 @@ type MailConfig struct {
 	from     string
 }
 
-type OauthConfig struct {
-	client_id       string
-	client_secret   string
-	client_callback string
-}
-
 type application struct {
 	mailConfig   MailConfig
 	DSN          string
 	Domain       string
 	DB           repository.DatabaseRepo
-	oauth        OauthConfig
 	auth         Auth
 	JWTSecret    string
 	JWTIssuer    string
@@ -93,23 +85,7 @@ func main() {
 		CookieDomain:  "localhost",
 	}
 
-	clientID := os.Getenv("CLIENT_ID")
-	clientSecret := os.Getenv("CLIENT_SECRET")
-	clientCallback := os.Getenv("CLIENT_CALLBACK")
-
-	if clientID == "" || clientSecret == "" || clientCallback == "" {
-		log.Println("field is missing to param oauth")
-		return
-	}
-
-	app.oauth = OauthConfig{
-		client_id:       clientID,
-		client_secret:   clientSecret,
-		client_callback: clientCallback,
-	}
-
 	goth.UseProviders(
-		google.New(clientID, clientSecret, clientCallback),
 		github.New(os.Getenv("GITHUB_CLIENT"), os.Getenv("GITHUB_SECRET"), os.Getenv("GITHUB_CALLBACK")),
 	)
 

@@ -14,7 +14,9 @@ func (app *application) routes() http.Handler {
 
 	mux.Use(app.enableCORS)
 
-	mux.Get("/", app.Home)
+	mux.Handle("/", app.verifyToken(http.HandlerFunc(app.Home)))
+
+	// mux.With(app.verifyToken).Get("/", app.Home)
 	// Bookmarks && resources
 	mux.Get("/bookmarks/{category}", app.GetProjectsByCategory)
 	mux.Get("/bookmarks/{category}/{project}", app.GetResourcesForProject)

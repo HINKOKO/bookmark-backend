@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -21,32 +23,33 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
-// var store = sessions.NewCookieStore([]byte("verysecret"))
+// var store = sessions.NewCookieStore([]byte())
 
 func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 	var loginReq struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-
+	// Decode the body and sanity checks
 	err := json.NewDecoder(r.Body).Decode(&loginReq)
 	if err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-
 	if loginReq.Email == "" || loginReq.Password == "" {
 		http.Error(w, "Email and password are required", http.StatusBadRequest)
 		return
 	}
-
+	// Query database - does this user exists ?
 	user, err := app.DB.GetUserByEmail(loginReq.Email)
 	if err != nil {
 		http.Error(w, "no such user in our dataabse", http.StatusNotFound)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(loginReq.Password), []byte(user.Password))
+	log.Println("user id of riri => ", user.ID)
+	// Compare its hashed password with hashed value in database
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password))
 	if err != nil {
 		if err == bcrypt.ErrMismatchedHashAndPassword {
 			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
@@ -56,26 +59,25 @@ func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// generate a token for new user
-	classicUser := jwtUser{
-		ID:       fmt.Sprintf(string(user.ID)),
-		Username: user.UserName,
+	tokens, err := app.auth.GenerateTokenPair(user.ID)
+	if err != nil {
+		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
+		return
 	}
-	tokenString, _ := app.auth.GenerateTokenPair(&classicUser)
+	refreshCookie := app.auth.GetRefreshCookie(tokens.RefreshToken)
 
 	// Optionally, store the refresh token in the database
-	// err = app.DB.StoreRefreshToken(user.ID, tokenString.RefreshToken)
-	// if err != nil {
-	// 	http.Error(w, "Failed to store refresh token", http.StatusInternalServerError)
-	// 	return
-	// }
+	err = app.DB.StoreTokenPairs(user.ID, tokens.Token, tokens.RefreshToken, time.Now().Add(app.auth.TokenExpiry))
+	if err != nil {
+		http.Error(w, "Failed to store refresh token", http.StatusInternalServerError)
+		return
+	}
 
-	http.SetCookie(w, app.auth.GetRefreshCookie(tokenString.RefreshToken))
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"access_token": tokenString.Token})
-
+	http.SetCookie(w, refreshCookie)
+	app.writeJSON(w, http.StatusAccepted, tokens)
 }
 
+// ConfirmEmail - handler to confirm the link + token sent via email
 func (app *application) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
@@ -105,6 +107,7 @@ func (app *application) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "http://localhost:5173/email-confirmed", http.StatusAccepted)
 }
 
+// RegisterNewUser - handler for registering a new user with classic method (username + mail + password)
 func (app *application) RegisterNewUser(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -138,6 +141,7 @@ func (app *application) RegisterNewUser(w http.ResponseWriter, r *http.Request) 
 	app.writeJSON(w, http.StatusAccepted, id)
 }
 
+// HandleAuth - handler for the authentication via Oauth (Github)
 func (app *application) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	q.Add("provider", chi.URLParam(r, "provider"))
@@ -146,6 +150,7 @@ func (app *application) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	gothic.BeginAuthHandler(w, r)
 }
 
+// HandleCallback - handler for the callback url via Github Oauth
 func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
 	r = r.WithContext(context.WithValue(context.Background(), "provider", provider))
@@ -155,19 +160,17 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	userID := uuid.New().String()
-
-	// generate a token for new user
-	u := jwtUser{
-		ID:       userID,
-		Username: user.NickName,
+	userID, _ := strconv.Atoi(uuid.New().String())
+	tokenString, err := app.auth.GenerateTokenPair(userID)
+	if err != nil {
+		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
+		return
 	}
-	tokenString, _ := app.auth.GenerateTokenPair(&u)
 	refreshCookie := app.auth.GetRefreshCookie(tokenString.RefreshToken)
 	http.SetCookie(w, refreshCookie)
 
 	// store that new user in DB
-	err = app.DB.StoreUserInDB(userID, &user)
+	err = app.DB.StoreUserInDB(string(userID), &user)
 	if err != nil {
 		log.Printf("Error storing user in database: %v", err)
 		http.Error(w, "Error storing user in database", http.StatusInternalServerError)
@@ -192,66 +195,3 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 func (app *application) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 }
-
-// func (app *application) Login(w http.ResponseWriter, r *http.Request) {
-
-// 	u, err := app.DB.GetUserByEmail(email)
-// 	if err != nil {
-// 		log.Println("no such user apprently")
-
-// 	}
-
-// 	err = app.CheckPassword(u, password)
-// 	if err != nil {
-// 		app.writeJSON(w, http.StatusBadRequest, nil)
-// 	}
-
-// 		app.writeJSON(w, http.StatusOK, u)
-// 	}
-// func (app *application) InitOauth(w http.ResponseWriter, r *http.Request) {
-// 	provider := chi.URLParam(r, "provider")
-// 	log.Println("provider from URLParam is => ", provider)
-
-// 	q := r.URL.Query()
-// 	q.Add("provider", provider)
-// 	r.URL.RawQuery = q.Encode()
-// 	gothic.BeginAuthHandler(w, r)
-// }
-
-// func (app *application) SignIn(w http.ResponseWriter, r *http.Request) {
-// 	provider := chi.URLParam(r, "provider")
-// 	r = r.WithContext(context.WithValue(r.Context(), "provider", provider))
-
-// 	user, err := gothic.CompleteUserAuth(w, r)
-// 	if err != nil {
-// 		log.Printf("Error completing user auth: %v", err)
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(user)
-
-// 	// generate a token for new user
-// 	u := jwtUser{
-// 		// ID:       user.UserID,
-// 		// Username: user.Name,
-// 		ID:       "1",
-// 		Username: "patrick_cohen",
-// 	}
-// 	tokenString, _ := app.auth.GenerateTokenPair(&u)
-// 	refreshCookie := app.auth.GetRefreshCookie(tokenString.RefreshToken)
-
-// 	// http.SetCookie(w, refreshCookie)
-// 	// session, _ := store.Get(r, "session-name")
-// 	// session.Values["user"] = user
-// 	// session.Save(r, w)
-
-// 	// w.Header().Set("Content-Type", "application/json")
-// 	// json.NewEncoder(w).Encode(user)
-// 	// app.writeJSON(w, http.StatusAccepted, tokenString)
-// 	http.SetCookie(w, refreshCookie)
-
-// 	redirectURL := fmt.Sprintf("http://localhost:5173/?token=%s", tokenString.Token)
-// 	http.Redirect(w, r, redirectURL, http.StatusFound)
-// }

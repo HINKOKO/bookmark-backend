@@ -4,7 +4,6 @@ import (
 	"bookmarks/internal/models"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -39,57 +38,55 @@ type TokenPairs struct {
 // Claims - wrapper type around the jwt registered claims
 type Claims struct {
 	jwt.RegisteredClaims
+	UserID int `json:"user_id"`
 }
 
 // GenerateTokenPair - generate the token pair
-func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
+func (j *Auth) GenerateTokenPair(userID int) (TokenPairs, error) {
+	claims := &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    j.Issuer,
+			Audience:  jwt.ClaimStrings{j.Audience},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.TokenExpiry)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+		UserID: userID,
+	}
+
 	// Create a token
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	// Set the claims - what is this token claims to be representing, when, ... ?
-	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = fmt.Sprintf("%s", user.Username)
-	claims["sub"] = fmt.Sprint(user.ID)
-	claims["audience"] = j.Audience
-	claims["iss"] = j.Issuer
-	claims["iat"] = time.Now().UTC().Unix()
-	claims["typ"] = "JWT"
-
-	// set an expiry for jwt token
-	claims["exp"] = time.Now().UTC().Add(j.TokenExpiry).Unix()
-
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// create a signed token
 	signedAccessToken, err := token.SignedString([]byte(j.Secret))
 	if err != nil {
 		return TokenPairs{}, err
 	}
 
+	refreshClaims := &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    j.Issuer,
+			Audience:  jwt.ClaimStrings{j.Audience},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.RefreshExpiry)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+		UserID: userID,
+	}
+
 	// Create a refresh token - set claims - kinda parallel/similar methods here
-	refreshToken := jwt.New(jwt.SigningMethodHS256)
-	refreshTokenClaims := refreshToken.Claims.(jwt.MapClaims)
-	refreshTokenClaims["sub"] = fmt.Sprint(user.ID)
-	refreshTokenClaims["iat"] = time.Now().UTC().Unix()
-
-	// Set expiry for refresh token
-	refreshTokenClaims["exp"] = time.Now().UTC().Add(j.RefreshExpiry).Unix()
-
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	// Create signed refresh token
 	signedRefreshToken, err := refreshToken.SignedString([]byte(j.Secret))
 	if err != nil {
 		return TokenPairs{}, err
 	}
-
-	log.Println("successfull signed token ? => \t", signedAccessToken)
-	log.Println("successfull refresh signed token ? => \t", signedRefreshToken)
-
-	// Create TokenPairs and populate with signed tokens
-	var tokenPairs = TokenPairs{
-		Token:        signedAccessToken,
-		RefreshToken: signedRefreshToken,
-	}
+	// log.Println("successfull signed token ? => \t", signedAccessToken)
+	// log.Println("successfull refresh signed token ? => \t", signedRefreshToken)
 
 	// Finally Return TokenPairs
-	return tokenPairs, nil
+	return TokenPairs{
+		Token:        signedAccessToken,
+		RefreshToken: signedRefreshToken,
+	}, nil
+
 }
 
 // GetRefreshCookie -
@@ -103,7 +100,7 @@ func (j *Auth) GetRefreshCookie(refreshToken string) *http.Cookie {
 		SameSite: http.SameSiteStrictMode,
 		Domain:   j.CookieDomain,
 		HttpOnly: true, // -> Giving No javascript access at all to this cookie
-		Secure:   false,
+		Secure:   true,
 	}
 }
 
@@ -122,6 +119,20 @@ func (j *Auth) GetExpiredRefreshCookie() *http.Cookie {
 		HttpOnly: true, // No javascript access at all to this cookie
 		Secure:   false,
 	}
+}
+
+func (j *Auth) GetTokenFromCookieAndVerify(tokenString string) (string, *Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(j.Secret), nil
+	})
+	if err != nil || !token.Valid {
+		return "", nil, err
+	}
+	return tokenString, claims, nil
 }
 
 func (j *Auth) GetTokenFromHeaderAndVerify(w http.ResponseWriter, r *http.Request) (string, *Claims, error) {
@@ -186,3 +197,55 @@ type UserAuthenticating struct {
 func (app *application) CheckPassword(u models.User, plainPass string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plainPass))
 }
+
+// ========= FIRST VERSION OF TOKENPAIRS GENERATION =========
+// func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
+
+// 	// Create a token
+// 	token := jwt.New(jwt.SigningMethodHS256)
+
+// 	// Set the claims - what is this token claims to be representing, when, ... ?
+// 	claims := token.Claims.(jwt.MapClaims)
+// 	claims["name"] = user.Username
+// 	claims["sub"] = fmt.Sprint(user.ID)
+// 	claims["audience"] = j.Audience
+// 	claims["iss"] = j.Issuer
+// 	claims["iat"] = time.Now().UTC().Unix()
+// 	claims["typ"] = "JWT"
+
+// 	// set an expiry for jwt token
+// 	claims["exp"] = time.Now().UTC().Add(j.TokenExpiry).Unix()
+
+// 	// create a signed token
+// 	signedAccessToken, err := token.SignedString([]byte(j.Secret))
+// 	if err != nil {
+// 		return TokenPairs{}, err
+// 	}
+
+// 	// Create a refresh token - set claims - kinda parallel/similar methods here
+// 	refreshToken := jwt.New(jwt.SigningMethodHS256)
+// 	refreshTokenClaims := refreshToken.Claims.(jwt.MapClaims)
+// 	refreshTokenClaims["sub"] = fmt.Sprint(user.ID)
+// 	refreshTokenClaims["iat"] = time.Now().UTC().Unix()
+
+// 	// Set expiry for refresh token
+// 	refreshTokenClaims["exp"] = time.Now().UTC().Add(j.RefreshExpiry).Unix()
+
+// 	// Create signed refresh token
+// 	signedRefreshToken, err := refreshToken.SignedString([]byte(j.Secret))
+// 	if err != nil {
+// 		return TokenPairs{}, err
+// 	}
+
+// 	// log.Println("successfull signed token ? => \t", signedAccessToken)
+// 	// log.Println("successfull refresh signed token ? => \t", signedRefreshToken)
+
+// 	// Create TokenPairs and populate with signed tokens
+// 	var tokenPairs = TokenPairs{
+// 		Token:        signedAccessToken,
+// 		RefreshToken: signedRefreshToken,
+// 	}
+
+// 	// Finally Return TokenPairs
+// 	return tokenPairs, nil
+// }

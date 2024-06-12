@@ -76,41 +76,6 @@ func (m *PostgresDBRepo) GetResourcesByCategoryAndProject(category, project stri
 	return resources, nil
 }
 
-// ============== Unused ==========
-// func (m *PostgresDBRepo) GetProjectResources(projectID int) ([]*models.Bookmark, error) {
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-// 	defer cancel()
-
-// 	var bookmarks []*models.Bookmark
-
-// 	query := `SELECT id, url, title, description, user_id, project_id, created_at,
-// 		updated_at FROM bookmarks WHERE project_id = $1`
-
-// 	rows, err := m.DB.QueryContext(ctx, query, projectID)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	for rows.Next() {
-// 		var b models.Bookmark
-// 		err := rows.Scan(
-// 			b.ID,
-// 			b.Url,
-// 			b.Title,
-// 			b.Description,
-// 			b.UserID,
-// 			b.ProjectID,
-// 			b.CreatedAt,
-// 			b.UpdatedAt,
-// 		)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		bookmarks = append(bookmarks, &b)
-// 	}
-// 	return bookmarks, nil
-// }
-
 func (m *PostgresDBRepo) GetContributors() ([]*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
@@ -202,6 +167,23 @@ func (m *PostgresDBRepo) StoreUserInDB(userID string, user *goth.User) error {
 	return nil
 }
 
+func (m *PostgresDBRepo) StoreTokenPairs(userID int, accessToken, refreshToken string, expiry time.Time) error {
+	stmt := `INSERT INTO tokens (user_id, access_token, refresh_token, expiry_date)
+		VALUES ($1, $2, $3, $4)`
+	_, err := m.DB.Exec(stmt, userID, accessToken, refreshToken, expiry)
+	return err
+}
+
+// GetTokens - used to check if there are tokens
+// func (app *application) GetTokens(userID int) (string, string, error) {
+//     var accessToken, refreshToken string
+//     err := app.DB.QueryRow("SELECT access_token, refresh_token FROM tokens WHERE user_id = $1 AND expiry_date > CURRENT_TIMESTAMP ORDER BY created_at DESC LIMIT 1", userID).Scan(&accessToken, &refreshToken)
+//     if err != nil {
+//         return "", "", err
+//     }
+//     return accessToken, refreshToken, nil
+// }
+
 // FetchUserFromDB - fetch a user by ID to give information to dashboard protected route
 func (m *PostgresDBRepo) FetchUserFromDB(userID string) (models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
@@ -255,6 +237,41 @@ func (m *PostgresDBRepo) VerifyUser(userID int) error {
 	}
 	return nil
 }
+
+// ============== Unused ==========
+// func (m *PostgresDBRepo) GetProjectResources(projectID int) ([]*models.Bookmark, error) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+// 	defer cancel()
+
+// 	var bookmarks []*models.Bookmark
+
+// 	query := `SELECT id, url, title, description, user_id, project_id, created_at,
+// 		updated_at FROM bookmarks WHERE project_id = $1`
+
+// 	rows, err := m.DB.QueryContext(ctx, query, projectID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	for rows.Next() {
+// 		var b models.Bookmark
+// 		err := rows.Scan(
+// 			b.ID,
+// 			b.Url,
+// 			b.Title,
+// 			b.Description,
+// 			b.UserID,
+// 			b.ProjectID,
+// 			b.CreatedAt,
+// 			b.UpdatedAt,
+// 		)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		bookmarks = append(bookmarks, &b)
+// 	}
+// 	return bookmarks, nil
+// }
 
 // func (db *DB) VerifyUser(userID int) error {
 // 	query := `UPDATE users SET verified = TRUE, confirmation_token = NULL WHERE id = $1`
