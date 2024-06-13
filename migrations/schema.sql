@@ -27,7 +27,7 @@ SET default_table_access_method = heap;
 CREATE TABLE public.bookmarks (
     id integer NOT NULL,
     url text NOT NULL,
-    title character varying(255),
+    type character varying(255),
     description text,
     user_id integer NOT NULL,
     project_id integer NOT NULL,

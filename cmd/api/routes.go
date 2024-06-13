@@ -29,6 +29,13 @@ func (app *application) routes() http.Handler {
 	mux.Get("/user-info", app.GetUserInfo)
 	mux.Get("/logout", app.Logout)
 
+	mux.Post("/contributors/insert-bookmark", app.InsertNewBookmark)
+
+	// Posting new resources
+	// mux.Get("/contributors/categories", app.GetCategories)
+	mux.Get("/contributors/{category}", app.GetProjectsByCategory)
+	// mux.Post("/contributors/bookmarks", app.PostNewBookmarkByCategory)
+
 	// protected route section - now we are not kidding anymore
 	mux.Route("/contributor", func(mux chi.Router) {
 		mux.Use(app.authRequired)

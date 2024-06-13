@@ -3,6 +3,7 @@ package main
 import (
 	"bookmarks/internal/models"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -55,6 +56,28 @@ func (app *application) GetResourcesForProject(w http.ResponseWriter, r *http.Re
 
 	json.NewEncoder(w).Encode(resources)
 
+}
+
+func (app *application) InsertNewBookmark(w http.ResponseWriter, r *http.Request) {
+	var bkm models.Bookmark
+
+	err := json.NewDecoder(r.Body).Decode(&bkm)
+	if err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	log.Println(bkm)
+
+	err = app.DB.InsertBookmark(&bkm)
+	if err != nil {
+		http.Error(w, "Failed to insert bookmark", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Bookmark added successfully"})
 }
 
 func (app *application) GetUserInfo(w http.ResponseWriter, r *http.Request) {

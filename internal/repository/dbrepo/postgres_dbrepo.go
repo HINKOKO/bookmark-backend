@@ -19,6 +19,7 @@ func (m *PostgresDBRepo) Connection() *sql.DB {
 	return m.DB
 }
 
+/* Bookmarks functions - to retrieve, to modify, to insert */
 func (m *PostgresDBRepo) GetProjectsByCategory(category string) ([]*models.Project, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
@@ -67,13 +68,26 @@ func (m *PostgresDBRepo) GetResourcesByCategoryAndProject(category, project stri
 
 	for rows.Next() {
 		var r models.Bookmark
-		err := rows.Scan(&r.ID, &r.Title, &r.Description, &r.Url)
+		err := rows.Scan(&r.ID, &r.Type, &r.Description, &r.Url)
 		if err != nil {
 			return nil, err
 		}
 		resources = append(resources, &r)
 	}
 	return resources, nil
+}
+
+func (m *PostgresDBRepo) InsertBookmark(bkm *models.Bookmark) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	stmt := `
+	INSERT INTO bookmarks (url, description, user_id, project_id, type)
+	VALUES ($1, $2, $3, $4, $5)`
+
+	_, err := m.DB.ExecContext(ctx, stmt, bkm.Url, bkm.Description, bkm.UserID, bkm.ProjectID, bkm.Type)
+
+	return err
 }
 
 func (m *PostgresDBRepo) GetContributors() ([]*models.User, error) {
