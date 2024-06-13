@@ -15,10 +15,12 @@ type DatabaseRepo interface {
 	GetResourcesByCategoryAndProject(category, project string) ([]*models.Bookmark, error)
 
 	GetUserByEmail(email string) (models.User, error)
+	GetUserByID(userID int) (*models.User, error)
 	StoreUserInDB(userID string, user *goth.User) error
 
 	// Tokens related functions
 	StoreTokenPairs(userID int, accessToken, refreshToken string, expiry time.Time) error
+	DeleteTokensPairOnLogOut(userID int) error
 
 	FetchUserFromDB(userID string) (models.User, error)
 	// email confirmation && classic authentication function

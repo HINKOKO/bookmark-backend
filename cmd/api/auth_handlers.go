@@ -77,6 +77,25 @@ func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusAccepted, tokens)
 }
 
+func (app *application) Logout(w http.ResponseWriter, r *http.Request) {
+
+	cookie := &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   true,
+	}
+	http.SetCookie(w, cookie)
+
+	// Supprimer également le refresh token si nécessaire
+	refreshCookie := app.auth.GetExpiredRefreshCookie()
+	http.SetCookie(w, refreshCookie)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ConfirmEmail - handler to confirm the link + token sent via email
 func (app *application) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")

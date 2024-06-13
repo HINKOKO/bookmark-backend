@@ -21,16 +21,41 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 	})
 }
 
-func (app *application) authRequired(next http.Handler) http.Handler {
+func (app *application) verifyTokenFromCookie(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _, err := app.auth.GetTokenFromHeaderAndVerify(w, r)
+		_, err := r.Cookie("refresh_token")
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "no token found", http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r)
+
+		// token := cookie.Value
+		_, claims, err := app.auth.GetTokenFromHeaderAndVerify(w, r)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "userID", claims.UserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+// authRequired - middleware that check that authentication is ok - add the userID to context (for availability to next handlers)
+func (app *application) authRequired(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, claims, err := app.auth.GetTokenFromHeaderAndVerify(w, r)
+		if err != nil {
+			http.Error(w, "unauthorized: Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Add userID to Context
+		ctx := context.WithValue(r.Context(), "userID", claims.UserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func (app *application) verifyToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var claims *Claims
@@ -53,51 +78,14 @@ func (app *application) verifyToken(next http.Handler) http.Handler {
 			return
 		}
 
+		user, err := app.DB.GetUserByID(claims.UserID)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		// Store claims in the context
-		ctx := context.WithValue(r.Context(), "claims", claims)
+		ctx := context.WithValue(r.Context(), "user", user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
-
-// func (app *application) validateUser(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		var req RegisterRequest
-// 		err := json.NewDecoder(r.Body).Decode(&req)
-
-// 		if err != nil {
-// 			http.Error(w, "Invalid request body", http.StatusBadRequest)
-// 			return
-// 		}
-
-// 		if req.Username == "" || req.Email == "" || req.Password == "" {
-// 			http.Error(w, "one or several field are missing.", http.StatusBadRequest)
-// 			return
-// 		}
-// 		// password complexity - email format here too ?
-// 		next.ServeHTTP(w, r)
-// 	})
-// }
-
-// func (app *application) enableCORS(h http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
-
-// 		if r.Method == "OPTIONS" {
-// 			w.Header().Set("Access-Control-Allow-Credentials", "true")
-// 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-// 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type,X-CSRF-Token, Authorization")
-// 			return
-// 		} else {
-// 			h.ServeHTTP(w, r)
-// 		}
-// 	})
-// }
-
-// *** === Old Middleware === ***
-// mux.Use(cors.Handler(cors.Options{
-// 	AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:8080"},
-// 	AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-// 	AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-// 	AllowCredentials: true,
-// 	MaxAge:           300,
-// }))

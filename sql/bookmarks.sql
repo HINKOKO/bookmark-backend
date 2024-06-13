@@ -71,7 +71,7 @@ CREATE TABLE public.projects (
 CREATE TABLE public.bookmarks (
     id SERIAL PRIMARY KEY,
     url TEXT NOT NULL,
-    title VARCHAR(255),
+    title VARCHAR(255), 
     description TEXT,
     user_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,

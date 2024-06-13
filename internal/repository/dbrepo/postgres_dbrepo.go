@@ -128,6 +128,24 @@ func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 	return u, nil
 }
 
+func (m *PostgresDBRepo) GetUserByID(userID int) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	var u models.User
+	query := `SELECT id, username, avatar_url FROM users WHERE id = $1`
+	row := m.DB.QueryRowContext(ctx, query, userID)
+	err := row.Scan(
+		&u.ID,
+		&u.UserName,
+		&u.AvatarURL,
+	)
+	if err != nil {
+		return &u, err
+	}
+	return &u, nil
+}
+
 // InsertNewUser - Register a new 'classic' user - combination email + password
 func (m *PostgresDBRepo) InsertNewUser(username, email, password, emailToken, defaultAvatar string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
@@ -236,6 +254,11 @@ func (m *PostgresDBRepo) VerifyUser(userID int) error {
 		return err
 	}
 	return nil
+}
+
+func (m *PostgresDBRepo) DeleteTokensPairOnLogOut(userID int) error {
+	_, err := m.DB.Exec("DELETE FROM tokens WHERE user_id = $1", userID)
+	return err
 }
 
 // ============== Unused ==========

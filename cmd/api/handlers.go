@@ -10,19 +10,21 @@ import (
 
 func (app *application) Home(w http.ResponseWriter, r *http.Request) {
 	// Verify if claims is in context
-	claims, ok := r.Context().Value("claims").(*Claims)
-	authenticated := ok && claims != nil
+	user, ok := r.Context().Value("user").(*models.User)
+	authenticated := ok && user != nil
 
 	var payload = struct {
-		Status        string `json:"status"`
-		Message       string `json:"message"`
-		Version       string `json:"version"`
-		Authenticated bool   `json:"authenticated"`
+		Status        string       `json:"status"`
+		Message       string       `json:"message"`
+		Version       string       `json:"version"`
+		Authenticated bool         `json:"authenticated"`
+		User          *models.User `json:"user,omitempty"`
 	}{
 		Status:        "active",
 		Message:       "Go movies up and running",
 		Version:       "1.0.0",
 		Authenticated: authenticated,
+		User:          user,
 	}
 
 	_ = app.writeJSON(w, http.StatusOK, payload)

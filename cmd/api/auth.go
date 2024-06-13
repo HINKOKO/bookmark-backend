@@ -2,6 +2,7 @@ package main
 
 import (
 	"bookmarks/internal/models"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -113,7 +114,7 @@ func (j *Auth) GetExpiredRefreshCookie() *http.Cookie {
 		Path:     j.CookiePath,
 		Value:    "",
 		Expires:  time.Unix(0, 0),
-		MaxAge:   86400,
+		MaxAge:   60,
 		SameSite: http.SameSiteStrictMode,
 		Domain:   j.CookieDomain,
 		HttpOnly: true, // No javascript access at all to this cookie
@@ -181,6 +182,33 @@ func (j *Auth) GetTokenFromHeaderAndVerify(w http.ResponseWriter, r *http.Reques
 	return token, claims, nil
 }
 
+// Middleware to add userID to context
+func (app *application) Authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "No Authorization header", http.StatusUnauthorized)
+			return
+		}
+
+		headerParts := strings.Split(authHeader, " ")
+		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+			http.Error(w, "Invalid Authorization header", http.StatusUnauthorized)
+			return
+		}
+
+		// token := headerParts[1]
+		_, claims, err := app.auth.GetTokenFromHeaderAndVerify(w, r)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "userID", claims.UserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 type Credentials struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -197,55 +225,3 @@ type UserAuthenticating struct {
 func (app *application) CheckPassword(u models.User, plainPass string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plainPass))
 }
-
-// ========= FIRST VERSION OF TOKENPAIRS GENERATION =========
-// func (j *Auth) GenerateTokenPair(user *jwtUser) (TokenPairs, error) {
-
-// 	// Create a token
-// 	token := jwt.New(jwt.SigningMethodHS256)
-
-// 	// Set the claims - what is this token claims to be representing, when, ... ?
-// 	claims := token.Claims.(jwt.MapClaims)
-// 	claims["name"] = user.Username
-// 	claims["sub"] = fmt.Sprint(user.ID)
-// 	claims["audience"] = j.Audience
-// 	claims["iss"] = j.Issuer
-// 	claims["iat"] = time.Now().UTC().Unix()
-// 	claims["typ"] = "JWT"
-
-// 	// set an expiry for jwt token
-// 	claims["exp"] = time.Now().UTC().Add(j.TokenExpiry).Unix()
-
-// 	// create a signed token
-// 	signedAccessToken, err := token.SignedString([]byte(j.Secret))
-// 	if err != nil {
-// 		return TokenPairs{}, err
-// 	}
-
-// 	// Create a refresh token - set claims - kinda parallel/similar methods here
-// 	refreshToken := jwt.New(jwt.SigningMethodHS256)
-// 	refreshTokenClaims := refreshToken.Claims.(jwt.MapClaims)
-// 	refreshTokenClaims["sub"] = fmt.Sprint(user.ID)
-// 	refreshTokenClaims["iat"] = time.Now().UTC().Unix()
-
-// 	// Set expiry for refresh token
-// 	refreshTokenClaims["exp"] = time.Now().UTC().Add(j.RefreshExpiry).Unix()
-
-// 	// Create signed refresh token
-// 	signedRefreshToken, err := refreshToken.SignedString([]byte(j.Secret))
-// 	if err != nil {
-// 		return TokenPairs{}, err
-// 	}
-
-// 	// log.Println("successfull signed token ? => \t", signedAccessToken)
-// 	// log.Println("successfull refresh signed token ? => \t", signedRefreshToken)
-
-// 	// Create TokenPairs and populate with signed tokens
-// 	var tokenPairs = TokenPairs{
-// 		Token:        signedAccessToken,
-// 		RefreshToken: signedRefreshToken,
-// 	}
-
-// 	// Finally Return TokenPairs
-// 	return tokenPairs, nil
-// }

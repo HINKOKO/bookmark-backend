@@ -11,13 +11,10 @@ func (app *application) routes() http.Handler {
 	mux := chi.NewRouter()
 	mux.Use(middleware.Logger)
 	mux.Use(middleware.Recoverer)
-
 	mux.Use(app.enableCORS)
 
+	// Public routes
 	mux.Handle("/", app.verifyToken(http.HandlerFunc(app.Home)))
-
-	// mux.With(app.verifyToken).Get("/", app.Home)
-	// Bookmarks && resources
 	mux.Get("/bookmarks/{category}", app.GetProjectsByCategory)
 	mux.Get("/bookmarks/{category}/{project}", app.GetResourcesForProject)
 	mux.Get("/dashboard", app.Dashboard)
@@ -26,11 +23,11 @@ func (app *application) routes() http.Handler {
 	mux.Post("/register", app.RegisterNewUser)
 	mux.Post("/login", app.ClassicLogin)
 	mux.Get("/confirm-email", app.ConfirmEmail)
-
-	// USer information - Feed Dashboard && related screen with user data
-	mux.Get("/user-info", app.GetUserInfo)
-
 	mux.Get("/contributors", app.GetContributors)
+
+	// USer information - Feed Dashboard && related screen with user data - Hybrid by now
+	mux.Get("/user-info", app.GetUserInfo)
+	mux.Get("/logout", app.Logout)
 
 	// protected route section - now we are not kidding anymore
 	mux.Route("/contributor", func(mux chi.Router) {
