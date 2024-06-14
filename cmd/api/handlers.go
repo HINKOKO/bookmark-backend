@@ -10,7 +10,6 @@ import (
 )
 
 func (app *application) Home(w http.ResponseWriter, r *http.Request) {
-	// Verify if claims is in context
 	user, ok := r.Context().Value("user").(*models.User)
 	authenticated := ok && user != nil
 

@@ -105,7 +105,8 @@ func (j *Auth) GetRefreshCookie(refreshToken string) *http.Cookie {
 	}
 }
 
-// GetExpiredRefreshCookie - Function when we want the refresh cookie to be deleted from the user's agent
+// GetExpiredRefreshCookie - Designed to create an expired cookie
+// Function when we want the refresh cookie to be deleted from the user's agent
 // How you delete cookie -> Set another cookie with same attribute, but you set its max age to minus one
 // and expires time Unix zero.
 func (j *Auth) GetExpiredRefreshCookie() *http.Cookie {

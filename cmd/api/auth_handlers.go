@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bookmarks/internal/models"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -78,20 +79,29 @@ func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) Logout(w http.ResponseWriter, r *http.Request) {
+	// cookie := &http.Cookie{
+	// 	Name:     "token",
+	// 	Value:    "",
+	// 	Path:     "/",
+	// 	Expires:  time.Unix(0, 0),
+	// 	HttpOnly: true,
+	// 	Secure:   true,
+	// }
+	// http.SetCookie(w, cookie)
 
-	cookie := &http.Cookie{
-		Name:     "token",
-		Value:    "",
-		Path:     "/",
-		Expires:  time.Unix(0, 0),
-		HttpOnly: true,
-		Secure:   true,
-	}
-	http.SetCookie(w, cookie)
-
-	// Supprimer également le refresh token si nécessaire
 	refreshCookie := app.auth.GetExpiredRefreshCookie()
 	http.SetCookie(w, refreshCookie)
+
+	// get current user from the context
+	user, ok := r.Context().Value("user").(*models.User)
+	log.Println("do we have an user => \t", user)
+	if ok && user != nil {
+		err := app.DB.DeleteTokensPairOnLogOut(user.ID)
+		if err != nil {
+			app.errorJSON(w, err)
+			return
+		}
+	}
 
 	w.WriteHeader(http.StatusNoContent)
 }

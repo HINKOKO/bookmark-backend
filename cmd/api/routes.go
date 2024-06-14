@@ -27,7 +27,7 @@ func (app *application) routes() http.Handler {
 
 	// USer information - Feed Dashboard && related screen with user data - Hybrid by now
 	mux.Get("/user-info", app.GetUserInfo)
-	mux.Get("/logout", app.Logout)
+	mux.Handle("/logout", app.verifyToken(http.HandlerFunc(app.Logout)))
 
 	mux.Post("/contributors/insert-bookmark", app.InsertNewBookmark)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 )
 
@@ -83,6 +84,7 @@ func (app *application) verifyToken(next http.Handler) http.Handler {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+		log.Println("Hello from middleware with user => \t", user)
 
 		// Store claims in the context
 		ctx := context.WithValue(r.Context(), "user", user)
