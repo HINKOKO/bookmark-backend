@@ -55,7 +55,7 @@ func (m *PostgresDBRepo) GetResourcesByCategoryAndProject(category, project stri
 
 	var resources []*models.Bookmark
 
-	query := `SELECT b.id, b.title, b.description, b.url FROM bookmarks b
+	query := `SELECT b.id, b.type, b.description, b.url FROM bookmarks b
 		JOIN projects p ON b.project_id = p.id
 		JOIN categories c ON p.category_id = c.id
 		WHERE c.category = $1 AND p.name = $2`

@@ -87,7 +87,6 @@ func (j *Auth) GenerateTokenPair(userID int) (TokenPairs, error) {
 		Token:        signedAccessToken,
 		RefreshToken: signedRefreshToken,
 	}, nil
-
 }
 
 // GetRefreshCookie -

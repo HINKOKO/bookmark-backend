@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"regexp"
 )
 
 type JSONResponse struct {
@@ -85,4 +86,10 @@ func generateRandomString(length int) string {
 		randomString[i] = charset[randowIdx.Int64()]
 	}
 	return string(randomString)
+}
+
+// isValidURL - validates an Url against regular expression
+func isValidURL(url string) bool {
+	re := regexp.MustCompile(`^(https?://)?((([a-z\d]([a-z\d-]*[a-z\d])*)\.?)+[a-z]{2,}|(\d{1,3}\.){3}\d{1,3})(:\d+)?(/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?(#[-a-z\d_]*)?$`)
+	return re.MatchString(url)
 }

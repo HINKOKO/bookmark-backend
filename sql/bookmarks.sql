@@ -21,21 +21,6 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 
-
--- CREATE TABLE public.users (
---     id SERIAL PRIMARY KEY,
---     username VARCHAR(50) NOT NULL UNIQUE,
---     email VARCHAR(100) UNIQUE,
---     password_hash TEXT,
---     oauth_provider VARCHAR(50),
---     oauth_id VARCHAR(100),
---     nickname VARCHAR(50),
---     avatar_url TEXT,
---     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
--- );
-
-
 -- users table
 CREATE TABLE public.users (
     id SERIAL PRIMARY KEY,

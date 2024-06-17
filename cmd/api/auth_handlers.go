@@ -79,16 +79,6 @@ func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) Logout(w http.ResponseWriter, r *http.Request) {
-	// cookie := &http.Cookie{
-	// 	Name:     "token",
-	// 	Value:    "",
-	// 	Path:     "/",
-	// 	Expires:  time.Unix(0, 0),
-	// 	HttpOnly: true,
-	// 	Secure:   true,
-	// }
-	// http.SetCookie(w, cookie)
-
 	refreshCookie := app.auth.GetExpiredRefreshCookie()
 	http.SetCookie(w, refreshCookie)
 
@@ -144,8 +134,6 @@ func (app *application) RegisterNewUser(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// check in log the request
-	// log.Printf("%+v\n", req)
 
 	// Request is properly formatted - pretending new user deserves an email confirmation
 	// generate a random token

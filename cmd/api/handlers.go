@@ -3,10 +3,11 @@ package main
 import (
 	"bookmarks/internal/models"
 	"encoding/json"
-	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 func (app *application) Home(w http.ResponseWriter, r *http.Request) {
@@ -52,23 +53,30 @@ func (app *application) GetResourcesForProject(w http.ResponseWriter, r *http.Re
 		app.errorJSON(w, err, http.StatusInternalServerError)
 		return
 	}
-
 	json.NewEncoder(w).Encode(resources)
-
 }
 
 func (app *application) InsertNewBookmark(w http.ResponseWriter, r *http.Request) {
-	var bkm models.Bookmark
+	var bookmark models.Bookmark
 
-	err := json.NewDecoder(r.Body).Decode(&bkm)
+	err := json.NewDecoder(r.Body).Decode(&bookmark)
 	if err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	log.Println(bkm)
+	u, err := url.ParseRequestURI(bookmark.Url)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		http.Error(w, "Invalid URL provided", http.StatusBadRequest)
+		return
+	}
 
-	err = app.DB.InsertBookmark(&bkm)
+	// Sanitize the text field 'description' from Bookmark model
+	policy := bluemonday.UGCPolicy()
+	bookmark.Description = policy.Sanitize(bookmark.Description)
+
+	// Insert Sanitized bookmark into database
+	err = app.DB.InsertBookmark(&bookmark)
 	if err != nil {
 		http.Error(w, "Failed to insert bookmark", http.StatusInternalServerError)
 		return
