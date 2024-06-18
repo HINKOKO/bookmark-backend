@@ -32,4 +32,6 @@ type DatabaseRepo interface {
 
 	// Contributors functions
 	GetContributors() ([]*models.User, error)
+
+	SaveAvatarURL(userID int, avatarURL string) error
 }

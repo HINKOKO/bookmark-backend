@@ -17,7 +17,6 @@ func (app *application) routes() http.Handler {
 	mux.Handle("/", app.verifyToken(http.HandlerFunc(app.Home)))
 	mux.Get("/bookmarks/{category}", app.GetProjectsByCategory)
 	mux.Get("/bookmarks/{category}/{project}", app.GetResourcesForProject)
-	mux.Get("/dashboard", app.Dashboard)
 	mux.Get("/auth/{provider}", app.HandleAuth)
 	mux.Get("/auth/{provider}/callback", app.HandleCallback)
 	mux.Post("/register", app.RegisterNewUser)
@@ -35,12 +34,11 @@ func (app *application) routes() http.Handler {
 	// mux.Get("/contributors/categories", app.GetCategories)
 	mux.Get("/contributors/{category}", app.GetProjectsByCategory)
 	// mux.Post("/contributors/bookmarks", app.PostNewBookmarkByCategory)
+	mux.Post("/dashboard/upload-avatar", app.UploadAvatar)
 
 	// protected route section - now we are not kidding anymore
 	mux.Route("/contributor", func(mux chi.Router) {
 		mux.Use(app.authRequired)
-		mux.Get("/dashboard", app.Dashboard)
-		// mux.Post("/{category}/{project}/new-resource", app.InsertNewBookmark)
 	})
 
 	return mux

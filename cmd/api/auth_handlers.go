@@ -207,8 +207,3 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 	app.writeJSON(w, http.StatusOK, user)
 }
-
-// Dashboard - handler
-func (app *application) Dashboard(w http.ResponseWriter, r *http.Request) {
-
-}
