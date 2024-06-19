@@ -177,7 +177,31 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	userID, _ := strconv.Atoi(uuid.New().String())
+
+	// Check if this user has already logged in the past with Github
+	existingUser, err := app.DB.GetUserByEmail(user.Email)
+	if err != nil {
+		log.Println("Error when checking user in dataabase: %v", err)
+		http.Error(w, "error when checking if user exists in database", http.StatusInternalServerError)
+		return
+	}
+
+	var userID int
+	if existingUser.UserName != "" {
+		userID = existingUser.ID
+	} else {
+		// generate a new ID for this new Github logger
+		userID, _ := strconv.Atoi(uuid.New().String())
+		// store that new user in DB
+		err = app.DB.StoreUserInDB(string(userID), &user)
+		if err != nil {
+			log.Printf("Error storing user in database: %v", err)
+			http.Error(w, "Error storing user in database", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Generate token pair for user
 	tokenString, err := app.auth.GenerateTokenPair(userID)
 	if err != nil {
 		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
@@ -186,14 +210,6 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	refreshCookie := app.auth.GetRefreshCookie(tokenString.RefreshToken)
 	http.SetCookie(w, refreshCookie)
 
-	// store that new user in DB
-	err = app.DB.StoreUserInDB(string(userID), &user)
-	if err != nil {
-		log.Printf("Error storing user in database: %v", err)
-		http.Error(w, "Error storing user in database", http.StatusInternalServerError)
-		return
-	}
-
 	// JSONify the user data fetched from oauth provider
 	userData, err := json.MarshalIndent(user, "", "\t")
 	if err != nil {
@@ -201,7 +217,7 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error encoding user data", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("user data from github %s", string(userData))
+	// log.Printf("user data from github %s", string(userData))
 
 	redirectURL := fmt.Sprintf("http://localhost:5173/dashboard?accessToken=%s&user=%s", tokenString.Token, url.QueryEscape(string(userData)))
 	http.Redirect(w, r, redirectURL, http.StatusFound)

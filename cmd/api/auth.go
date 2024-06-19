@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -142,6 +143,8 @@ func (j *Auth) GetTokenFromHeaderAndVerify(w http.ResponseWriter, r *http.Reques
 
 	// get auth header
 	authHeader := r.Header.Get("Authorization")
+	log.Println("Authorization Header:", authHeader) // Ajoutez cette ligne pour loguer l'en-tête
+
 	// Sanity checks
 	if authHeader == "" {
 		return "", nil, errors.New("no auth header in header")

@@ -40,7 +40,6 @@ func (app *application) GetProjectsByCategory(w http.ResponseWriter, r *http.Req
 		app.errorJSON(w, err)
 		return
 	}
-
 	_ = app.writeJSON(w, http.StatusOK, projects)
 }
 
