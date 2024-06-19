@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -56,7 +55,7 @@ func (app *application) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Construct the URL path
-	avatarURL := filepath.Join("uploads", filepath.Base(tmpFile.Name()))
+	avatarURL := "/uploads/" + filepath.Base(tmpFile.Name())
 
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
@@ -76,5 +75,8 @@ func (app *application) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "avatar uploaded successfully: %s", avatarURL)
+	fullAvatarURL := "http://localhost:8080" + avatarURL
+	// return avatar URL to frontend
+	response := map[string]string{"avatar_url": fullAvatarURL}
+	app.writeJSON(w, http.StatusOK, response)
 }

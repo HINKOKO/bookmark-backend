@@ -56,7 +56,6 @@ CREATE TABLE public.projects (
 CREATE TABLE public.bookmarks (
     id SERIAL PRIMARY KEY,
     url TEXT NOT NULL,
-    title VARCHAR(255), 
     description TEXT,
     user_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
@@ -107,8 +106,21 @@ VALUES
 ('malloc project', (SELECT id FROM public.categories WHERE category = 'malloc')),
 ('The shell project', (SELECT id FROM public.categories WHERE category = 'simple-shell'));
 
+-- Seed each projects with bookmarks I have
+-- INSERT INTO public.bookmark (url, description, user_id, project_id)
+-- VALUES
+-- ('', (SELECT id FROM public.categories WHERE category = 'system-linux'), )
 
 
 
-
-
+-- CREATE TABLE public.bookmarks (
+--     id SERIAL PRIMARY KEY,
+--     url TEXT NOT NULL,
+--     description TEXT,
+--     user_id INTEGER NOT NULL,
+--     project_id INTEGER NOT NULL,
+--     created_at timestamp without time zone default CURRENT_TIMESTAMP,
+--     updated_at timestamp without time zone default CURRENT_TIMESTAMP,
+--     FOREIGN KEY (user_id) REFERENCES public.users (id) ON DELETE SET NULL,
+--     FOREIGN KEY (project_id) REFERENCES public.projects (id) ON DELETE SET NULL
+-- );

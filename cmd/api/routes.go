@@ -36,6 +36,9 @@ func (app *application) routes() http.Handler {
 	// mux.Post("/contributors/bookmarks", app.PostNewBookmarkByCategory)
 	mux.Post("/dashboard/upload-avatar", app.UploadAvatar)
 
+	fileServer := http.FileServer(http.Dir("./uploads"))
+	mux.Handle("/uploads/*", http.StripPrefix("/uploads", fileServer))
+
 	// protected route section - now we are not kidding anymore
 	mux.Route("/contributor", func(mux chi.Router) {
 		mux.Use(app.authRequired)
