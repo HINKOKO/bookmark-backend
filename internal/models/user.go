@@ -13,6 +13,7 @@ type User struct {
 	TokenHash  string    `json:"token_hash,omitempty"`
 	AvatarURL  string    `json:"avatar_url"`
 	Verified   bool      `json:"verified"`
+	IsAdmin    bool      `json:"is_admin"`
 	CreatedAt  time.Time `json:"-"`
 	UpdatedAt  time.Time `json:"-"`
 }

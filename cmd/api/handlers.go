@@ -3,8 +3,10 @@ package main
 import (
 	"bookmarks/internal/models"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/microcosm-cc/bluemonday"
@@ -101,15 +103,15 @@ func (app *application) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+	log.Println("userid is\t", claims.UserID)
 
-	userID := claims.Subject
+	userID := strconv.Itoa(claims.UserID)
 
 	userInfo, err := app.DB.FetchUserFromDB(userID)
 	if err != nil {
 		http.Error(w, "Error fetching user info", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(userInfo)
 }
@@ -124,4 +126,29 @@ func (app *application) GetContributors(w http.ResponseWriter, r *http.Request) 
 	}
 
 	app.writeJSON(w, http.StatusOK, contributors)
+}
+
+func (app *application) ListUsers(w http.ResponseWriter, r *http.Request) {
+	var users []*models.User
+
+	users, _ = app.DB.GetContributors()
+
+	app.writeJSON(w, http.StatusAccepted, users)
+}
+
+func (app *application) ListBookmarksByUser(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userID")
+	userID, err := strconv.Atoi(userIDStr) // must match the placeholder in route definition
+	if err != nil {
+		http.Error(w, "No such user - something really bad here", http.StatusBadRequest)
+		return
+	}
+
+	bookmarks, err := app.DB.GetBookmarksByUser(userID)
+	if err != nil {
+		http.Error(w, "error fetching bookmarks", http.StatusInternalServerError)
+		return
+	}
+
+	app.writeJSON(w, http.StatusOK, bookmarks)
 }

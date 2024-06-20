@@ -34,14 +34,22 @@ func (app *application) routes() http.Handler {
 	// mux.Get("/contributors/categories", app.GetCategories)
 	mux.Get("/contributors/{category}", app.GetProjectsByCategory)
 	// mux.Post("/contributors/bookmarks", app.PostNewBookmarkByCategory)
-	mux.Post("/dashboard/upload-avatar", app.UploadAvatar)
+	mux.Get("/dashboard/{userID}", app.GetDashboardStats)
 
 	fileServer := http.FileServer(http.Dir("./uploads"))
 	mux.Handle("/uploads/*", http.StripPrefix("/uploads", fileServer))
 
 	// protected route section - now we are not kidding anymore
-	mux.Route("/contributor", func(mux chi.Router) {
+	mux.Route("/dashboard", func(mux chi.Router) {
 		mux.Use(app.authRequired)
+		mux.Post("/upload-avatar", app.UploadAvatar)
+	})
+
+	mux.Route("/admin", func(mux chi.Router) {
+		mux.Use(app.adminRequired)
+		mux.Get("/dashboard-panel", app.AdminDashboard)
+		mux.Get("/list-users", app.ListUsers)
+		mux.Get("/list-users/{userID}/bookmarks", app.ListBookmarksByUser)
 	})
 
 	return mux

@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,7 +15,6 @@ const uploadPath = "./uploads"
 func (app *application) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	// ensure the directory to store avatarURL about users exists
 	// this function will be called by the first who change his default avatar basically
-
 	err := os.MkdirAll(uploadPath, os.ModePerm)
 	if err != nil {
 		http.Error(w, "unable to create directory to save avatarsURL", http.StatusBadRequest)
@@ -25,7 +25,6 @@ func (app *application) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		app.errorJSON(w, err, http.StatusSeeOther)
 		return
 	}
-
 	file, _, err := r.FormFile("avatar")
 	if err != nil {
 		http.Error(w, "unable to read file", http.StatusBadRequest)
@@ -79,4 +78,10 @@ func (app *application) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	// return avatar URL to frontend
 	response := map[string]string{"avatar_url": fullAvatarURL}
 	app.writeJSON(w, http.StatusOK, response)
+}
+
+func (app *application) GetDashboardStats(w http.ResponseWriter, r *http.Request) {
+	userIDstr := r.URL.Query().Get("user_id")
+	log.Println(userIDstr)
+
 }

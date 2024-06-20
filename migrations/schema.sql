@@ -237,7 +237,8 @@ CREATE TABLE public.users (
     token_hash character varying(255) DEFAULT ''::character varying NOT NULL,
     jwt_token_id character varying(255) DEFAULT ''::character varying NOT NULL,
     email_token character varying(255) DEFAULT ''::character varying,
-    verified boolean DEFAULT false NOT NULL
+    verified boolean DEFAULT false NOT NULL,
+    is_admin boolean DEFAULT false NOT NULL
 );
 
 

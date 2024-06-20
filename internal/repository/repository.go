@@ -34,4 +34,5 @@ type DatabaseRepo interface {
 	GetContributors() ([]*models.User, error)
 
 	SaveAvatarURL(userID int, avatarURL string) error
+	GetBookmarksByUser(userID int) ([]map[string]interface{}, error)
 }

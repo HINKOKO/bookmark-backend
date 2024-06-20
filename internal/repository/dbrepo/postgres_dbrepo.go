@@ -126,19 +126,28 @@ func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 
 	var u models.User
 
-	query := `SELECT id, username, password_hash, created_at, updated_at FROM users WHERE email = $1`
+	query := `SELECT id, jwt_token_id, username, email, password_hash, COALESCE(email_token, ''), token_hash, avatar_url, verified, is_admin, created_at, updated_at FROM users WHERE email = $1`
 
 	row := m.DB.QueryRowContext(ctx, query, email)
 	err := row.Scan(
 		&u.ID,
+		&u.JwtTokenID,
 		&u.UserName,
+		&u.Email,
 		&u.Password,
+		&u.EmailToken,
+		&u.TokenHash,
+		&u.AvatarURL,
+		&u.Verified,
+		&u.IsAdmin,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	)
 	if err != nil {
+		log.Println(err)
 		return u, err
 	}
+	log.Printf("Retrieved user: %+v\n", u)
 
 	return u, nil
 }
@@ -231,15 +240,23 @@ func (m *PostgresDBRepo) FetchUserFromDB(userID string) (models.User, error) {
 	var u models.User
 	log.Println("FetchUserFromDB:: userID just before querying db => ", userID)
 
-	query := `SELECT username, email, avatar_url FROM users WHERE jwt_token_id = $1`
+	query := `SELECT username, COALESCE(email, ''), COALESCE(nickname, ''), password_hash, COALESCE(email_token, ''), COALESCE(token_hash, ''),
+	avatar_url, verified, is_admin FROM users WHERE id = $1`
 
 	row := m.DB.QueryRowContext(ctx, query, userID)
 	err := row.Scan(
 		&u.UserName,
 		&u.Email,
+		&u.NickName,
+		&u.Password,
+		&u.EmailToken,
+		&u.TokenHash,
 		&u.AvatarURL,
+		&u.Verified,
+		&u.IsAdmin,
 	)
 	if err != nil {
+		log.Println(err)
 		return u, err
 	}
 	return u, nil
@@ -291,4 +308,70 @@ func (m *PostgresDBRepo) SaveAvatarURL(userID int, avatarURL string) error {
 	_, err := m.DB.ExecContext(ctx, stmt, avatarURL, userID)
 
 	return err
+}
+
+// Get the bookmarks by user id - all the bookmarks a user fetched
+func (m *PostgresDBRepo) GetDashboardStats(userID int) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var count int
+
+	query := `SELECT COUNT(b.id) AS bookmark_count
+	FROM public.bookmarks b
+	JOIN public.projects p ON b.project_id = p.id
+	JOIN public.categories c ON p.category_id = c.id
+	WHERE b.user_id = $1`
+
+	err := m.DB.QueryRowContext(ctx, query, userID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (m *PostgresDBRepo) GetBookmarksByUser(userID int) ([]map[string]interface{}, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var bkmsByUser []map[string]interface{}
+
+	query := `SELECT b.id, b.url, b.type, b.description, p.name AS project_name
+	FROM bookmarks b
+	JOIN projects p ON b.project_id = p.id
+	WHERE user_id = $1`
+
+	rows, err := m.DB.QueryContext(ctx, query, userID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var url, bkType, bkDesc, bkProjectName string
+
+		err := rows.Scan(
+			&id,
+			&url,
+			&bkType,
+			&bkDesc,
+			&bkProjectName,
+		)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		bkm := map[string]interface{}{
+			"id":           id,
+			"url":          url,
+			"type":         bkType,
+			"description":  bkDesc,
+			"project_name": bkProjectName,
+		}
+		bkmsByUser = append(bkmsByUser, bkm)
+
+	}
+	return bkmsByUser, nil
 }

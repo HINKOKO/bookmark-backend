@@ -66,6 +66,7 @@ func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	refreshCookie := app.auth.GetRefreshCookie(tokens.RefreshToken)
+	http.SetCookie(w, refreshCookie)
 
 	// Optionally, store the refresh token in the database
 	err = app.DB.StoreTokenPairs(user.ID, tokens.Token, tokens.RefreshToken, time.Now().Add(app.auth.TokenExpiry))
@@ -74,8 +75,18 @@ func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, refreshCookie)
-	app.writeJSON(w, http.StatusAccepted, tokens)
+	log.Printf("User info before encoding response: %+v\n\t", user)
+
+	response := struct {
+		User  models.User `json:"user"`
+		Token string      `json:"token"`
+	}{
+		User:  user,
+		Token: tokens.Token,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+	// app.writeJSON(w, http.StatusAccepted, tokens)
 }
 
 func (app *application) Logout(w http.ResponseWriter, r *http.Request) {
@@ -179,27 +190,27 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if this user has already logged in the past with Github
-	existingUser, err := app.DB.GetUserByEmail(user.Email)
+	// existingUser, err := app.DB.GetUserByEmail(user.Email)
+	// if err != nil {
+	// 	log.Println("Error when checking user in database: %v", err)
+	// 	http.Error(w, "error when checking if user exists in database", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// var userID int
+	// if existingUser.UserName != "" {
+	// 	userID = existingUser.ID
+	// } else {
+	// generate a new ID for this new Github logger
+	userID, _ := strconv.Atoi(uuid.New().String())
+	// store that new user in DB
+	err = app.DB.StoreUserInDB(string(userID), &user)
 	if err != nil {
-		log.Println("Error when checking user in dataabase: %v", err)
-		http.Error(w, "error when checking if user exists in database", http.StatusInternalServerError)
+		log.Printf("Error storing user in database: %v", err)
+		http.Error(w, "Error storing user in database", http.StatusInternalServerError)
 		return
 	}
-
-	var userID int
-	if existingUser.UserName != "" {
-		userID = existingUser.ID
-	} else {
-		// generate a new ID for this new Github logger
-		userID, _ := strconv.Atoi(uuid.New().String())
-		// store that new user in DB
-		err = app.DB.StoreUserInDB(string(userID), &user)
-		if err != nil {
-			log.Printf("Error storing user in database: %v", err)
-			http.Error(w, "Error storing user in database", http.StatusInternalServerError)
-			return
-		}
-	}
+	// }
 
 	// Generate token pair for user
 	tokenString, err := app.auth.GenerateTokenPair(userID)
@@ -222,4 +233,26 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	redirectURL := fmt.Sprintf("http://localhost:5173/dashboard?accessToken=%s&user=%s", tokenString.Token, url.QueryEscape(string(userData)))
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 	app.writeJSON(w, http.StatusOK, user)
+}
+
+func (app *application) AdminDashboard(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("userID").(int)
+
+	user, err := app.DB.GetUserByID(userID)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusUnauthorized)
+		return
+	}
+
+	if !user.IsAdmin {
+		http.Error(w, "forbidden", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(struct {
+		Message string `json:"message"`
+	}{
+		Message: "Welcome to the admin dashboard!",
+	})
 }
