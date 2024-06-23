@@ -212,7 +212,7 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// generate a new ID for this new Github logger
 	userID, _ := strconv.Atoi(uuid.New().String())
 	// store that new user in DB
-	err = app.DB.StoreUserInDB(string(userID), &user)
+	err = app.DB.StoreUserInDB(fmt.Sprint(userID), &user)
 	if err != nil {
 		log.Printf("Error storing user in database: %v", err)
 		http.Error(w, "Error storing user in database", http.StatusInternalServerError)
