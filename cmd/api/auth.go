@@ -34,7 +34,7 @@ type jwtUser struct {
 // TokenPairs - gather token and refresh token
 type TokenPairs struct {
 	Token        string `json:"access_token"`
-	RefreshToken string `json:"refreshy_token_of_devil"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 // Claims - wrapper type around the jwt registered claims
@@ -199,7 +199,6 @@ func (app *application) Authenticate(next http.Handler) http.Handler {
 			http.Error(w, "Invalid Authorization header", http.StatusUnauthorized)
 			return
 		}
-
 		// token := headerParts[1]
 		_, claims, err := app.auth.GetTokenFromHeaderAndVerify(w, r)
 		if err != nil {

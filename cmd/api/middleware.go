@@ -59,19 +59,6 @@ func (app *application) authRequired(next http.Handler) http.Handler {
 
 // middleware to check and protect the admin route
 func (app *application) adminRequired(next http.Handler) http.Handler {
-	// return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	userID := r.Context().Value("userID").(int)
-	// 	user, err := app.DB.GetUserByID(userID)
-	// 	if err != nil {
-	// 		http.Error(w, "unauthorized: user not found", http.StatusUnauthorized)
-	// 		return
-	// 	}
-	// 	if !user.IsAdmin {
-	// 		http.Error(w, "forbidden: you are not an admin", http.StatusForbidden)
-	// 		return
-	// 	}
-	// 	next.ServeHTTP(w, r)
-	// })
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var claims *Claims
 		var err error
@@ -81,12 +68,10 @@ func (app *application) adminRequired(next http.Handler) http.Handler {
 		if err == nil {
 			_, claims, err = app.auth.GetTokenFromCookieAndVerify(cookie.Value)
 		}
-
 		// If there's no valid cookie token, try the Authorization header
 		if err != nil {
 			_, claims, err = app.auth.GetTokenFromHeaderAndVerify(w, r)
 		}
-
 		// If neither method succeeded, respond with Unauthorized
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -94,6 +79,11 @@ func (app *application) adminRequired(next http.Handler) http.Handler {
 		}
 
 		user, err := app.DB.GetUserByID(claims.UserID)
+		log.Printf("user retrieved from middleware => %+v\n", user)
+		if user.IsAdmin == false {
+			http.Error(w, "unauthorized to see this page", http.StatusUnauthorized)
+			return
+		}
 		if err != nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
