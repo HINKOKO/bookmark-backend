@@ -12,6 +12,11 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
+// Special handler for endpoint used for sanity check about CI/CD
+func (app *application) checkHealth(w http.ResponseWriter, r *http.Request) {
+	app.writeJSON(w, http.StatusOK, []byte("healthy app"))
+}
+
 func (app *application) Home(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value("user").(*models.User)
 	authenticated := ok && user != nil

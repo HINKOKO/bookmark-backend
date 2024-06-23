@@ -120,6 +120,29 @@ func (m *PostgresDBRepo) GetContributors() ([]*models.User, error) {
 	return conts, nil
 }
 
+func (m *PostgresDBRepo) CheckEmailConflict(email string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	var u models.User
+
+	query := `SELECT id, username, email WHERE = $1`
+	row := m.DB.QueryRowContext(ctx, query, email)
+	err := row.Scan(
+		&u.ID,
+		&u.UserName,
+		&u.Email,
+	)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+	if u.UserName != "" {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
@@ -147,7 +170,6 @@ func (m *PostgresDBRepo) GetUserByEmail(email string) (models.User, error) {
 		log.Println(err)
 		return u, err
 	}
-	log.Printf("Retrieved user: %+v\n", u)
 
 	return u, nil
 }

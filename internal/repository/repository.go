@@ -28,6 +28,7 @@ type DatabaseRepo interface {
 	// mail confirmation related function
 	GetUserByConfirmationToken(token string) (*models.User, error)
 	VerifyUser(userID int) error
+	CheckEmailConflict(email string) (bool, error)
 	InsertNewUser(username, email, password, emailToken, defaultAvatar string) (int, error)
 
 	// Contributors functions

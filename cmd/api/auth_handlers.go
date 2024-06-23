@@ -146,6 +146,13 @@ func (app *application) RegisterNewUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	exist, err := app.DB.CheckEmailConflict(req.Email)
+	if exist {
+		app.writeJSON(w, http.StatusBadRequest, err)
+		http.Redirect(w, r, "/", http.StatusBadRequest)
+		return
+	}
+
 	// Request is properly formatted - pretending new user deserves an email confirmation
 	// generate a random token
 	randomString := generateRandomString(32)
@@ -161,6 +168,7 @@ func (app *application) RegisterNewUser(w http.ResponseWriter, r *http.Request) 
 
 	id, err := app.DB.InsertNewUser(req.Username, req.Email, req.Password, randomString, defaultAvatar)
 	if err != nil {
+		app.writeJSON(w, http.StatusBadRequest, err)
 		log.Println("Failed to register that new user")
 		return
 	}

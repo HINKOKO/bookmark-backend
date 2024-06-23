@@ -13,6 +13,9 @@ func (app *application) routes() http.Handler {
 	mux.Use(middleware.Recoverer)
 	mux.Use(app.enableCORS)
 
+	// Health route for CI/CD
+	mux.Get("/", app.checkHealth)
+
 	// Public routes
 	mux.Handle("/", app.verifyToken(http.HandlerFunc(app.Home)))
 	mux.Get("/bookmarks/{category}", app.GetProjectsByCategory)
