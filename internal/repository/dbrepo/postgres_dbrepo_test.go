@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestGetProjectsByCategory - testing that getting project by category behaves correctly
 func TestGetProjectsByCategory(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -33,5 +34,42 @@ func TestGetProjectsByCategory(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unfulfilled expectations: %v", err)
+	}
+}
+
+func TestGetResourcesByCategoryAndProject(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	defer db.Close()
+
+	repo := &PostgresDBRepo{DB: db}
+	// test data
+	category := "system-linux"
+	project := "libasm"
+
+	// Mock the expected results
+	rows := sqlmock.NewRows([]string{"id", "type", "description", "url"}).AddRow(1, "tutorial", "Assembly little project", "https://assemblyDesmystified.com")
+
+	// expected query
+	mock.ExpectQuery(`SELECT b.id, b.type, b.description, b.url FROM bookmarks b
+	JOIN projects p ON b.project_id = p.id
+	JOIN categories c ON p.category_id = c.id
+	WHERE c.category = \$1 AND p.name = \$2`).WithArgs(category, project).WillReturnRows(rows)
+
+	resources, err := repo.GetResourcesByCategoryAndProject(category, project)
+	if err != nil {
+		t.Fatalf("error calling GetResourcesByCategoryAndProject: %v", err)
+	}
+
+	// Check results
+	assert.Equal(t, 1, len(resources), "expected one resources")
+	assert.Equal(t, "tutorial", resources[0].Type, "expected resource type to match")
+	assert.Equal(t, "Assembly little project", resources[0].Description, "expected description to match")
+	assert.Equal(t, "https://assemblyDesmystified.com", resources[0].Url, "expected url links to match")
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there was unfulfilled expectations: %s", err)
 	}
 }

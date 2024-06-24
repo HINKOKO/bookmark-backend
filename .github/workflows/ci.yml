@@ -39,3 +39,6 @@ jobs:
 
       - name: Run tests
         run: go test -v ./...
+
+      - name: Check for outdated dependencies
+        run: go list -u -m -json all | go-mod-outdated -update -direct
