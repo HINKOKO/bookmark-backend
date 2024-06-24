@@ -73,6 +73,7 @@ func (app *application) InsertNewBookmark(w http.ResponseWriter, r *http.Request
 
 	u, err := url.ParseRequestURI(bookmark.Url)
 	if err != nil || u.Scheme == "" || u.Host == "" {
+		log.Println(err)
 		http.Error(w, "Invalid URL provided", http.StatusBadRequest)
 		return
 	}
