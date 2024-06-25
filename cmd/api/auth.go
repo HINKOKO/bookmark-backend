@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Auth struct - structure to pack the authentication-token parameter
 type Auth struct {
 	Issuer        string
 	Audience      string
@@ -90,7 +91,7 @@ func (j *Auth) GenerateTokenPair(userID int) (TokenPairs, error) {
 	}, nil
 }
 
-// GetRefreshCookie -
+// GetRefreshCookie - create a secure cookie from the jwt token
 func (j *Auth) GetRefreshCookie(refreshToken string) *http.Cookie {
 	return &http.Cookie{
 		Name:     j.CookieName,
@@ -123,6 +124,7 @@ func (j *Auth) GetExpiredRefreshCookie() *http.Cookie {
 	}
 }
 
+// GetTokenFromCookieAndVerify - scan the token stored in Cookie to check its validity
 func (j *Auth) GetTokenFromCookieAndVerify(tokenString string) (string, *Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -137,6 +139,7 @@ func (j *Auth) GetTokenFromCookieAndVerify(tokenString string) (string, *Claims,
 	return tokenString, claims, nil
 }
 
+// GetTokenFromHeaderAndVerify - scan the token stored in header to check its validity
 func (j *Auth) GetTokenFromHeaderAndVerify(w http.ResponseWriter, r *http.Request) (string, *Claims, error) {
 	// Good practice to add header
 	w.Header().Add("Vary", "Authorization")
@@ -211,11 +214,13 @@ func (app *application) Authenticate(next http.Handler) http.Handler {
 	})
 }
 
+// Credentials - structure to pack the credentials informations entered
 type Credentials struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
+// UserAuthenticating - structure to pack the credentials entered and to be checked when authenticating first time
 type UserAuthenticating struct {
 	Username    string
 	Email       string
@@ -224,6 +229,7 @@ type UserAuthenticating struct {
 	VerifyToken string
 }
 
+// CheckPassword - utility function to compare hashed password
 func (app *application) CheckPassword(u models.User, plainPass string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(plainPass))
 }

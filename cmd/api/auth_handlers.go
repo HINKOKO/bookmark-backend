@@ -18,14 +18,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// RegisterRequest - structure to pack the request data when creating an account
 type RegisterRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// var store = sessions.NewCookieStore([]byte())
-
+// ClassicLogin - Handler responsible of classic login - email && password
 func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 	var loginReq struct {
 		Email    string `json:"email"`
@@ -86,9 +86,9 @@ func (app *application) ClassicLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	// app.writeJSON(w, http.StatusAccepted, tokens)
 }
 
+// Logout - obviously handles the Logout button
 func (app *application) Logout(w http.ResponseWriter, r *http.Request) {
 	refreshCookie := app.auth.GetExpiredRefreshCookie()
 	http.SetCookie(w, refreshCookie)
@@ -243,6 +243,7 @@ func (app *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusOK, user)
 }
 
+// AdminDashboard - Handler to serve the data to the Admin Dashboard
 func (app *application) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(int)
 
