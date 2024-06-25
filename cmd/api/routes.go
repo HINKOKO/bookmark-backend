@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+// routes - declares all the routes and their respectives protection
 func (app *application) routes() http.Handler {
 	mux := chi.NewRouter()
 	mux.Use(middleware.Logger)
@@ -54,6 +55,5 @@ func (app *application) routes() http.Handler {
 		mux.Get("/list-users", app.ListUsers)
 		mux.Get("/list-users/{userID}/bookmarks", app.ListBookmarksByUser)
 	})
-
 	return mux
 }

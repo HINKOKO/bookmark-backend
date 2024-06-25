@@ -12,6 +12,7 @@ import (
 const maxUploadSize = 2 * 1024 * 1024
 const uploadPath = "./uploads"
 
+// UploadAvatar - handling the avatar edition
 func (app *application) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	// ensure the directory to store avatarURL about users exists
 	// this function will be called by the first who change his default avatar basically
@@ -80,8 +81,9 @@ func (app *application) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusOK, response)
 }
 
+// GetDashboardStats - handler to serve stats data to the dashboard
 func (app *application) GetDashboardStats(w http.ResponseWriter, r *http.Request) {
 	userIDstr := r.URL.Query().Get("user_id")
 	log.Println(userIDstr)
-
+	// panic!("not implemented") (Rust joke)
 }

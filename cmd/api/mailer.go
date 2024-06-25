@@ -8,6 +8,7 @@ import (
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
+// sendConfirmationEmail - Function which open a smtp server to send an activation email to the new registered user
 func (app *application) sendConfirmationEmail(toEmail, emailToken string) error {
 	server := mail.NewSMTPClient()
 

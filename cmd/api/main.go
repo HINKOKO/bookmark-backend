@@ -15,8 +15,10 @@ import (
 	"github.com/markbates/goth/providers/github"
 )
 
+// port on which the application listen (dev mode)
 const port = 8080
 
+// MailConfig - structure to pack the configuration variable for the SMTP server
 type MailConfig struct {
 	host     string
 	port     int
@@ -25,6 +27,8 @@ type MailConfig struct {
 	from     string
 }
 
+// application - structure to pack the embedded variables in the application 'receiver'
+// Useful +++ because majority of Http Handler takes the application struct as a receiver method
 type application struct {
 	mailConfig   MailConfig
 	DSN          string
@@ -37,12 +41,14 @@ type application struct {
 	CookieDomain string
 }
 
+// init - Runs even before the main, used to load the environment variables
 func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("error: no .env file found. Shutting down")
 	}
 }
 
+// main - entry point of the application
 func main() {
 	var app application
 

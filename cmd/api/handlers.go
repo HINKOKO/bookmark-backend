@@ -17,6 +17,7 @@ func (app *application) checkHealth(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusOK, []byte("healthy app"))
 }
 
+// Home - Handler for Homepage - rather used for backlog information
 func (app *application) Home(w http.ResponseWriter, r *http.Request) {
 	user, ok := r.Context().Value("user").(*models.User)
 	authenticated := ok && user != nil
@@ -38,6 +39,7 @@ func (app *application) Home(w http.ResponseWriter, r *http.Request) {
 	_ = app.writeJSON(w, http.StatusOK, payload)
 }
 
+// GetProjectsByCategory - Handler to retrieve & serve the projects according to category
 func (app *application) GetProjectsByCategory(w http.ResponseWriter, r *http.Request) {
 	var projects []*models.Project
 	category := chi.URLParam(r, "category")
@@ -50,6 +52,7 @@ func (app *application) GetProjectsByCategory(w http.ResponseWriter, r *http.Req
 	_ = app.writeJSON(w, http.StatusOK, projects)
 }
 
+// GetResourcesForProject -  Handler to retrieve & serve the resources for a given project
 func (app *application) GetResourcesForProject(w http.ResponseWriter, r *http.Request) {
 	category := chi.URLParam(r, "category")
 	project := chi.URLParam(r, "project")
@@ -62,6 +65,7 @@ func (app *application) GetResourcesForProject(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(resources)
 }
 
+// InsertNewBookmark - Handler to insert a new bookmark in the DB
 func (app *application) InsertNewBookmark(w http.ResponseWriter, r *http.Request) {
 	var bookmark models.Bookmark
 
@@ -94,6 +98,7 @@ func (app *application) InsertNewBookmark(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(map[string]string{"message": "Bookmark added successfully"})
 }
 
+// GetUserInfo - Handler to retrieve user info (used accross the screens in FrontEnd - via useAuth context)
 func (app *application) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 	// Handle CORS preflight requests
 	if r.Method == http.MethodOptions {
@@ -122,6 +127,7 @@ func (app *application) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userInfo)
 }
 
+// GetContributors - Handler to retrieve all contributors
 func (app *application) GetContributors(w http.ResponseWriter, r *http.Request) {
 	var contributors []*models.User
 
@@ -134,6 +140,12 @@ func (app *application) GetContributors(w http.ResponseWriter, r *http.Request) 
 	app.writeJSON(w, http.StatusOK, contributors)
 }
 
+/*
+========== WARNING ========
+DOUBLE FUNCTION WHICH ARE DOING THE SAME - REFACTOR !!!
+=============
+*/
+// ListUsers - Handler to list all users
 func (app *application) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var users []*models.User
 
@@ -142,6 +154,7 @@ func (app *application) ListUsers(w http.ResponseWriter, r *http.Request) {
 	app.writeJSON(w, http.StatusAccepted, users)
 }
 
+// ListBookmarksByUser - Handler to fetch the bookmarks according to a selected User
 func (app *application) ListBookmarksByUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := chi.URLParam(r, "userID")
 	userID, err := strconv.Atoi(userIDStr) // must match the placeholder in route definition

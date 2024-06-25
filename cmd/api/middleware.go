@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// enableCORS - middleware to allow cross-origin-resource-sharing according to our custom rules
 func (app *application) enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173") // URL de votre frontend
@@ -22,6 +23,7 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 	})
 }
 
+// verifyTokenFromCookie - middleware to verify the token authenticity/validity embed in the request
 func (app *application) verifyTokenFromCookie(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := r.Cookie("refresh_token")
@@ -96,6 +98,9 @@ func (app *application) adminRequired(next http.Handler) http.Handler {
 	})
 }
 
+/*
+=== DOUBLE CODE ALERT ===
+*/
 func (app *application) verifyToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var claims *Claims

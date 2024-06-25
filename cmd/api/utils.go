@@ -10,6 +10,7 @@ import (
 	"regexp"
 )
 
+// JSONResponse - structure to pack the json response data
 type JSONResponse struct {
 	Error   bool        `json:"error"`
 	Message string      `json:"message"`
@@ -19,6 +20,7 @@ type JSONResponse struct {
 // Character set from which to generate the random string (email validation)
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+// writeJSON - write a JSON response to the application
 func (app *application) writeJSON(w http.ResponseWriter, status int, data any, headers ...http.Header) error {
 	out, err := json.Marshal(data)
 	if err != nil {
@@ -40,6 +42,7 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data any, h
 	return nil
 }
 
+// readJSON - Read JSON from the application
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, data interface{}) error {
 	maxBytes := 1024 * 1024
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
@@ -59,6 +62,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, data in
 	return nil
 }
 
+// errorJSON - writes an error in JSON format to be send throughout application
 func (app *application) errorJSON(w http.ResponseWriter, err error, status ...int) error {
 	statusCode := http.StatusBadRequest
 
